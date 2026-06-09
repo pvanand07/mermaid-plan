@@ -18,6 +18,30 @@
   --gemini-font-mono: 'Fira Code', monospace;
 }
 
+.icon-muted {
+  color: var(--gemini-text-muted);
+}
+
+.icon-subtle {
+  color: var(--gemini-text-subtle);
+}
+
+.icon-primary {
+  color: var(--gemini-primary);
+}
+
+.icon-faint {
+  color: #cbd5e1;
+}
+
+.chevron-rotate-90 {
+  transform: rotate(90deg);
+}
+
+.export-chevron {
+  margin-left: 4px;
+}
+
 /* Layout */
 
 .app-layout {
@@ -1149,8 +1173,9 @@
   border: 1px solid var(--gemini-border);
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
+  min-height: 0;
   box-shadow: var(--gemini-shadow-sm);
 }
 
@@ -1182,13 +1207,16 @@
   gap: 16px;
   padding: 16px;
   overflow: hidden;
+  min-height: 0;
   background-color: var(--gemini-bg);
 }
 
 @media (max-width: 1024px) {
   .workspace {
-    flex-direction: column;
-    overflow-y: auto;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
+    overflow: hidden;
   }
 
   .topbar-right .btn-secondary {

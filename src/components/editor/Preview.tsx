@@ -1,4 +1,6 @@
-import { Hand, Maximize, Minus, MousePointer2, Plus, Share2, Download } from 'lucide-react'
+import { useRef } from 'react'
+import { Download, Hand, Maximize, Minus, Plus, Share2 } from 'lucide-react'
+import { usePreviewViewport } from '../../hooks/usePreviewViewport'
 import { MermaidRender } from '../MermaidRender'
 import './Preview.css'
 
@@ -9,6 +11,11 @@ interface PreviewProps {
 }
 
 export function Preview({ code, zoom, onZoomChange }: PreviewProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const { pan, isDragging, scale, onPointerDown, onPointerMove, onPointerUp, onWheel, resetView } =
+    usePreviewViewport(zoom, onZoomChange)
+
   return (
     <div className="preview-panel panel">
       <div className="panel-header">
@@ -32,7 +39,7 @@ export function Preview({ code, zoom, onZoomChange }: PreviewProps) {
             </button>
           </div>
           <div className="divider" />
-          <button type="button" className="btn-toolbar-icon">
+          <button type="button" className="btn-toolbar-icon" onClick={resetView} title="Reset view">
             <Maximize size={14} />
           </button>
           <button type="button" className="btn-toolbar-icon">
@@ -40,14 +47,29 @@ export function Preview({ code, zoom, onZoomChange }: PreviewProps) {
           </button>
           <div className="divider" />
           <button type="button" className="download-btn">
-            <Download size={14} color="#475569" /> Download SVG
+            <Download size={14} className="icon-muted" /> Download SVG
           </button>
         </div>
       </div>
 
-      <div className="preview-content-container">
-        <div className="mermaid-wrapper">
-          <MermaidRender code={code} scale={zoom / 100} />
+      <div
+        ref={containerRef}
+        className={`preview-content-container${isDragging ? ' is-dragging' : ''}`}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerLeave={onPointerUp}
+        onWheel={onWheel}
+      >
+        <div
+          className="preview-viewport"
+          style={{
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`,
+          }}
+        >
+          <div className="mermaid-wrapper">
+            <MermaidRender code={code} />
+          </div>
         </div>
       </div>
 
@@ -58,10 +80,6 @@ export function Preview({ code, zoom, onZoomChange }: PreviewProps) {
           </div>
           <span className="dot-separator">•</span>
           <div className="hint">Scroll to zoom</div>
-          <span className="dot-separator">•</span>
-          <div className="hint">
-            <MousePointer2 size={14} /> Double-click a node to edit
-          </div>
         </div>
       </div>
     </div>

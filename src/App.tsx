@@ -4,19 +4,25 @@ import { MyDiagramsPage } from './pages/MyDiagramsPage'
 import { TemplatesPage } from './pages/TemplatesPage'
 import { EditorPage } from './pages/EditorPage'
 
+const redirects: Record<string, string> = {
+  '/diagrams': '/',
+  '/examples': '/templates',
+  '/import': '/',
+  '/trash': '/',
+}
+
 function App() {
   return (
     <BrowserRouter>
       <SidebarProvider>
         <Routes>
           <Route path="/" element={<MyDiagramsPage />} />
-          <Route path="/diagrams" element={<Navigate to="/" replace />} />
+          {Object.entries(redirects).map(([from, to]) => (
+            <Route key={from} path={from} element={<Navigate to={to} replace />} />
+          ))}
           <Route path="/templates" element={<TemplatesPage />} />
           <Route path="/editor" element={<EditorPage />} />
           <Route path="/editor/:id" element={<EditorPage />} />
-          <Route path="/examples" element={<Navigate to="/templates" replace />} />
-          <Route path="/import" element={<Navigate to="/" replace />} />
-          <Route path="/trash" element={<Navigate to="/" replace />} />
         </Routes>
       </SidebarProvider>
     </BrowserRouter>

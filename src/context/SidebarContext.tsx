@@ -1,50 +1,20 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
+import { useLocalStorage } from '../hooks/useLocalStorage'
+import { useMediaQuery } from '../hooks/useMediaQuery'
+import { SidebarContext } from './sidebar-context'
 
 const STORAGE_KEY = 'sidebar-collapsed'
 
-type SidebarContextValue = {
-  collapsed: boolean
-  toggleCollapsed: () => void
-  mobileOpen: boolean
-  openMobile: () => void
-  closeMobile: () => void
-  isMobile: boolean
-}
-
-const SidebarContext = createContext<SidebarContextValue | null>(null)
-
-function readCollapsed(): boolean {
-  try {
-    return localStorage.getItem(STORAGE_KEY) === 'true'
-  } catch {
-    return false
-  }
-}
-
 export function SidebarProvider({ children }: { children: ReactNode }) {
   const location = useLocation()
-  const [collapsed, setCollapsed] = useState(readCollapsed)
+  const [collapsed, setCollapsed] = useLocalStorage(STORAGE_KEY, false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
+  const isMobile = useMediaQuery('(max-width: 768px)')
 
+  // Close the mobile drawer when navigating (e.g. browser back/forward).
   useEffect(() => {
-    const media = window.matchMedia('(max-width: 768px)')
-    const update = () => setIsMobile(media.matches)
-    update()
-    media.addEventListener('change', update)
-    return () => media.removeEventListener('change', update)
-  }, [])
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, String(collapsed))
-    } catch {
-      // ignore storage errors
-    }
-  }, [collapsed])
-
-  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync UI to route changes
     setMobileOpen(false)
   }, [location.pathname])
 
@@ -69,12 +39,4 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
       {children}
     </SidebarContext.Provider>
   )
-}
-
-export function useSidebar() {
-  const context = useContext(SidebarContext)
-  if (!context) {
-    throw new Error('useSidebar must be used within SidebarProvider')
-  }
-  return context
 }

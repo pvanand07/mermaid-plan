@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { AlignLeft, CheckCircle2, Copy } from 'lucide-react'
+import { cn } from '../../lib/cn'
 import './CodeEditor.css'
 
 interface CodeEditorProps {
@@ -39,13 +40,13 @@ export function CodeEditor({
         </div>
         <div className="toolbar">
           <button type="button" className="toolbar-btn" onClick={onFormat}>
-            <AlignLeft size={14} color="#64748B" /> Format
+            <AlignLeft size={14} className="icon-muted" /> Format
           </button>
           <button type="button" className="toolbar-btn" onClick={onCopy}>
-            <Copy size={14} color="#64748B" /> Copy
+            <Copy size={14} className="icon-muted" /> Copy
           </button>
           <button type="button" className="toolbar-btn">
-            <CheckCircle2 size={14} color="#64748B" /> Validate
+            <CheckCircle2 size={14} className="icon-muted" /> Validate
           </button>
           <div className="divider" />
           <div
@@ -62,7 +63,7 @@ export function CodeEditor({
             tabIndex={0}
           >
             <span>Auto-render</span>
-            <div className={`toggle-switch ${autoRender ? 'active' : ''}`}>
+            <div className={cn('toggle-switch', autoRender && 'active')}>
               <div className="toggle-knob" />
             </div>
           </div>

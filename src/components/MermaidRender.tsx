@@ -1,14 +1,25 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import mermaid from 'mermaid'
+import { cn } from '../lib/cn'
 
 mermaid.initialize({
   startOnLoad: false,
   theme: 'default',
   securityLevel: 'loose',
   fontFamily: 'Inter, sans-serif',
+  flowchart: {
+    htmlLabels: true,
+    curve: 'basis',
+    padding: 16,
+    useMaxWidth: false,
+  },
+  sequence: {
+    useMaxWidth: false,
+  },
+  mindmap: {
+    useMaxWidth: false,
+  },
 })
-
-let renderId = 0
 
 export function MermaidRender({
   code,
@@ -21,20 +32,35 @@ export function MermaidRender({
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
+  const baseId = useId().replace(/:/g, '')
+  const renderSeq = useRef(0)
 
   useEffect(() => {
     let cancelled = false
 
     async function render() {
-      if (!containerRef.current || !code.trim()) return
+      if (!containerRef.current) return
+
+      if (!code.trim()) {
+        containerRef.current.innerHTML = ''
+        setError(null)
+        return
+      }
 
       try {
-        renderId += 1
-        const id = `mermaid-${renderId}`
-        const { svg } = await mermaid.render(id, code)
+        renderSeq.current += 1
+        const id = `mermaid-${baseId}-${renderSeq.current}`
+        const { svg, bindFunctions } = await mermaid.render(id, code)
         if (!cancelled && containerRef.current) {
           containerRef.current.innerHTML = svg
+          bindFunctions?.(containerRef.current)
           setError(null)
+
+          const svgElement = containerRef.current.querySelector('svg')
+          if (svgElement instanceof SVGSVGElement) {
+            svgElement.setAttribute('role', 'img')
+            svgElement.style.maxWidth = 'none'
+          }
         }
       } catch (e) {
         if (!cancelled) {
@@ -47,12 +73,12 @@ export function MermaidRender({
     return () => {
       cancelled = true
     }
-  }, [code])
+  }, [code, baseId])
 
   if (error) {
     return (
-      <div className={`mermaid-render-error ${className}`}>
-        Preview unavailable
+      <div className={cn('mermaid-render-error', className)}>
+        {import.meta.env.DEV ? error : 'Preview unavailable'}
       </div>
     )
   }
@@ -60,8 +86,12 @@ export function MermaidRender({
   return (
     <div
       ref={containerRef}
-      className={`mermaid-render ${className}`}
-      style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}
+      className={cn('mermaid-render', className)}
+      style={
+        scale === 1
+          ? undefined
+          : { transform: `scale(${scale})`, transformOrigin: 'center center' }
+      }
     />
   )
 }

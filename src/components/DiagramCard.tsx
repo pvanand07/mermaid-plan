@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom'
-import { Folder, MoreVertical, Star } from 'lucide-react'
-import { badgeColors, type Diagram } from '../data/mockData'
+import { Folder, MoreVertical } from 'lucide-react'
+import { getDiagramBadge, type Diagram } from '../data'
+import { cn } from '../lib/cn'
 import { MermaidRender } from './MermaidRender'
+import { StarButton } from './StarButton'
 
 export function DiagramCard({ diagram }: { diagram: Diagram }) {
-  const badgeClass = badgeColors[diagram.type] ?? 'badge-default'
+  const badgeClass = getDiagramBadge(diagram.type)
 
   return (
     <Link to={`/editor/${diagram.id}`} className="card diagram-card">
@@ -14,20 +16,14 @@ export function DiagramCard({ diagram }: { diagram: Diagram }) {
       <div className="diagram-card-body">
         <div className="diagram-card-title-row">
           <h3 className="diagram-card-title">{diagram.title}</h3>
-          <button
-            type="button"
-            className={`star-btn${diagram.starred ? ' active' : ''}`}
-            onClick={(e) => e.preventDefault()}
-          >
-            <Star size={16} fill={diagram.starred ? 'currentColor' : 'none'} />
-          </button>
+          <StarButton starred={diagram.starred} onClick={(e) => e.preventDefault()} />
         </div>
         <p className="diagram-card-meta">Edited {diagram.editedAgo}</p>
         <div className="diagram-card-footer">
-          <span className={`badge ${badgeClass}`}>{diagram.type}</span>
+          <span className={cn('badge', badgeClass)}>{diagram.type}</span>
           <div className="diagram-card-actions">
             {diagram.folder && (
-              <Folder size={14} color="#CBD5E1" aria-label={diagram.folder} />
+              <Folder size={14} className="icon-faint" aria-label={diagram.folder} />
             )}
             <button
               type="button"

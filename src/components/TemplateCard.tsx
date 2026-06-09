@@ -1,37 +1,19 @@
+import { createElement } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  BarChart3,
-  GitBranch,
-  Layers,
-  Map,
-  Network,
-  PieChart,
-  Route,
-  Star,
-  Workflow,
-} from 'lucide-react'
-import type { Template } from '../data/mockData'
+import { getTemplateIcon, type Template } from '../data'
+import { cn } from '../lib/cn'
 import { MermaidRender } from './MermaidRender'
-
-const iconMap: Record<string, typeof Workflow> = {
-  flowchart: Workflow,
-  sequence: GitBranch,
-  class: Layers,
-  er: Network,
-  gantt: BarChart3,
-  state: Route,
-  pie: PieChart,
-  journey: Map,
-}
+import { StarButton } from './StarButton'
 
 export function TemplateCard({ template }: { template: Template }) {
-  const Icon = iconMap[template.id] ?? Workflow
-
   return (
     <div className="card template-card">
       <div className="template-card-preview">
-        <div className={`template-card-icon ${template.bgColor}`}>
-          <Icon size={16} className={template.iconColor} />
+        <div className={cn('template-card-icon', template.bgColor)}>
+          {createElement(getTemplateIcon(template.id), {
+            size: 16,
+            className: template.iconColor,
+          })}
         </div>
         <MermaidRender code={template.mermaidCode} scale={0.55} />
       </div>
@@ -46,12 +28,7 @@ export function TemplateCard({ template }: { template: Template }) {
           >
             Use template
           </Link>
-          <button
-            type="button"
-            className={`star-btn${template.starred ? ' active' : ''}`}
-          >
-            <Star size={16} fill={template.starred ? 'currentColor' : 'none'} />
-          </button>
+          <StarButton starred={template.starred} />
         </div>
       </div>
     </div>

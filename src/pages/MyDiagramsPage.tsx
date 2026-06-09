@@ -1,53 +1,38 @@
 import { Link } from 'react-router-dom'
-import {
-  ChevronLeft,
-  ChevronRight,
-  Code2,
-  Filter,
-  Grid3x3,
-  List,
-  Plus,
-  Search,
-} from 'lucide-react'
+import { ChevronLeft, ChevronRight, Filter, Grid3x3, List, Plus } from 'lucide-react'
 import { AppLayout } from '../components/AppLayout'
 import { DiagramCard } from '../components/DiagramCard'
 import { FolderCard } from '../components/FolderCard'
-import { diagrams, folders } from '../data/mockData'
+import { ImportCodeButton } from '../components/ImportCodeButton'
+import { PageHeader } from '../components/PageHeader'
+import { SearchInput } from '../components/SearchInput'
+import { diagrams, folders } from '../data'
+import { cn } from '../lib/cn'
 
 export function MyDiagramsPage() {
   return (
     <AppLayout>
       <main className="dashboard-main">
         <div className="page-container">
-          <div className="page-header">
-            <div>
-              <h1 className="page-title">My Diagrams</h1>
-              <p className="page-subtitle">All your saved diagrams in one place.</p>
-            </div>
-            <div className="page-actions">
-              <button type="button" className="btn btn-secondary">
-                <Code2 size={16} />
-                Import Mermaid code
-              </button>
-              <Link to="/editor" className="btn btn-primary">
-                <Plus size={16} />
-                New Diagram
-              </Link>
-            </div>
-          </div>
+          <PageHeader
+            title="My Diagrams"
+            subtitle="All your saved diagrams in one place."
+            actions={
+              <>
+                <ImportCodeButton />
+                <Link to="/editor" className="btn btn-primary">
+                  <Plus size={16} />
+                  New Diagram
+                </Link>
+              </>
+            }
+          />
 
           <div className="toolbar-row">
-            <div className="search-input-wrapper">
-              <Search size={16} className="search-input-icon" />
-              <input
-                type="text"
-                placeholder="Search diagrams and folders..."
-                className="search-input"
-              />
-            </div>
+            <SearchInput placeholder="Search diagrams and folders..." />
             <button type="button" className="filter-btn">
               Sort: Recently edited
-              <ChevronRight size={16} style={{ transform: 'rotate(90deg)', color: '#94A3B8' }} />
+              <ChevronRight size={16} className="icon-subtle chevron-rotate-90" />
             </button>
             <button type="button" className="filter-btn">
               <Filter size={16} />
@@ -99,7 +84,7 @@ export function MyDiagramsPage() {
                 <button
                   key={page}
                   type="button"
-                  className={`pagination-btn${page === 1 ? ' active' : ''}`}
+                  className={cn('pagination-btn', page === 1 && 'active')}
                 >
                   {page}
                 </button>
@@ -115,7 +100,7 @@ export function MyDiagramsPage() {
             <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
               <button type="button" className="filter-btn">
                 Show 12 per page
-                <ChevronRight size={16} style={{ transform: 'rotate(90deg)', color: '#94A3B8' }} />
+                <ChevronRight size={16} className="icon-subtle chevron-rotate-90" />
               </button>
             </div>
           </div>

@@ -77,26 +77,38 @@
   background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
   background-size: 20px 20px;
   background-color: #ffffff;
-  overflow: auto;
+  overflow: hidden;
   position: relative;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+}
+
+.preview-content-container.is-dragging {
+  cursor: grabbing;
+}
+
+.preview-viewport {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  transform-origin: 0 0;
+  will-change: transform;
 }
 
 .mermaid-wrapper {
-  transform-origin: center center;
-  max-width: 100%;
-  max-height: 100%;
   display: flex;
   justify-content: center;
+  align-items: center;
+  padding: 24px;
 }
 
 .mermaid-wrapper svg {
-  max-width: 100%;
   height: auto !important;
   font-family: 'Inter', sans-serif !important;
+  pointer-events: auto;
 }
 
 .mermaid-wrapper rect {

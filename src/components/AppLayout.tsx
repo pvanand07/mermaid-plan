@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { AppSidebar } from './AppSidebar'
 import { MobileMenuButton } from './MobileMenuButton'
-import { useSidebar } from '../context/SidebarContext'
+import { useSidebar } from '../hooks/useSidebar'
 
 interface AppLayoutProps {
   children: ReactNode

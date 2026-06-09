@@ -1,5 +1,5 @@
 import { Menu } from 'lucide-react'
-import { useSidebar } from '../context/SidebarContext'
+import { useSidebar } from '../hooks/useSidebar'
 
 export function MobileMenuButton() {
   const { openMobile } = useSidebar()

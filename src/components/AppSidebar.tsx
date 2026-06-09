@@ -13,7 +13,9 @@ import {
   Star,
   Trash2,
 } from 'lucide-react'
-import { useSidebar } from '../context/SidebarContext'
+import { useSidebar } from '../hooks/useSidebar'
+import { cn } from '../lib/cn'
+import { Logo } from './Logo'
 
 const navItems = [
   { label: 'My Diagrams', icon: LayoutGrid, path: '/' },
@@ -30,11 +32,11 @@ export function AppSidebar() {
 
   return (
     <aside
-      className={`sidebar${showCollapsed ? ' collapsed' : ''}${mobileOpen ? ' mobile-open' : ''}`}
+      className={cn('sidebar', showCollapsed && 'collapsed', mobileOpen && 'mobile-open')}
     >
       <div className="sidebar-header">
         <div className="logo">
-          <div className="logo-icon">M</div>
+          <Logo />
           <div className="logo-text">
             <h2>Mermaid Studio</h2>
             <span>Diagram workspace</span>
@@ -74,7 +76,7 @@ export function AppSidebar() {
             <Link
               key={item.path}
               to={item.path === '/' ? '/' : item.path}
-              className={`sidebar-nav-item${active ? ' active' : ''}`}
+              className={cn('sidebar-nav-item', active && 'active')}
               title={showCollapsed ? item.label : undefined}
               onClick={closeMobile}
             >
@@ -87,7 +89,7 @@ export function AppSidebar() {
 
       <div className="sidebar-note">
         <div className="sidebar-note-title">
-          <Star size={16} color="#94A3B8" />
+          <Star size={16} className="icon-subtle" />
           <span className="sidebar-label">Favorites</span>
         </div>
         <p className="sidebar-label">Star your favorite templates for quick access.</p>
@@ -96,7 +98,7 @@ export function AppSidebar() {
       <div className="sidebar-footer">
         <div className="pro-tip-card">
           <div className="pro-tip-header">
-            <Sparkles size={16} color="#6366F1" />
+            <Sparkles size={16} className="icon-primary" />
             <span className="sidebar-label">Unlock more</span>
           </div>
           <p className="sidebar-label">Get access to premium templates and features.</p>
