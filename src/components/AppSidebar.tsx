@@ -1,0 +1,130 @@
+import { Link, useLocation } from 'react-router-dom'
+import {
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  HelpCircle,
+  LayoutGrid,
+  LayoutTemplate,
+  PlayCircle,
+  Plus,
+  Settings,
+  Sparkles,
+  Star,
+  Trash2,
+} from 'lucide-react'
+import { useSidebar } from '../context/SidebarContext'
+
+const navItems = [
+  { label: 'My Diagrams', icon: LayoutGrid, path: '/' },
+  { label: 'Templates', icon: LayoutTemplate, path: '/templates' },
+  { label: 'Examples', icon: PlayCircle, path: '/examples' },
+  { label: 'Import', icon: Download, path: '/import' },
+  { label: 'Trash', icon: Trash2, path: '/trash' },
+]
+
+export function AppSidebar() {
+  const location = useLocation()
+  const { collapsed, toggleCollapsed, mobileOpen, closeMobile, isMobile } = useSidebar()
+  const showCollapsed = collapsed && !isMobile
+
+  return (
+    <aside
+      className={`sidebar${showCollapsed ? ' collapsed' : ''}${mobileOpen ? ' mobile-open' : ''}`}
+    >
+      <div className="sidebar-header">
+        <div className="logo">
+          <div className="logo-icon">M</div>
+          <div className="logo-text">
+            <h2>Mermaid Studio</h2>
+            <span>Diagram workspace</span>
+          </div>
+        </div>
+        <button
+          type="button"
+          className="icon-btn sidebar-toggle"
+          onClick={toggleCollapsed}
+          aria-label={showCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-expanded={!showCollapsed}
+        >
+          {showCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        </button>
+      </div>
+
+      <div className="sidebar-cta">
+        <Link
+          to="/editor"
+          className="new-diagram-btn"
+          title={showCollapsed ? 'New Diagram' : undefined}
+          onClick={closeMobile}
+        >
+          <Plus size={16} />
+          <span className="sidebar-label">New Diagram</span>
+        </Link>
+      </div>
+
+      <nav className="sidebar-content sidebar-nav">
+        {navItems.map((item) => {
+          const active =
+            item.path === '/'
+              ? location.pathname === '/' || location.pathname === '/diagrams'
+              : location.pathname.startsWith(item.path)
+          const Icon = item.icon
+          return (
+            <Link
+              key={item.path}
+              to={item.path === '/' ? '/' : item.path}
+              className={`sidebar-nav-item${active ? ' active' : ''}`}
+              title={showCollapsed ? item.label : undefined}
+              onClick={closeMobile}
+            >
+              <Icon size={16} className="nav-icon" />
+              <span className="sidebar-label">{item.label}</span>
+            </Link>
+          )
+        })}
+      </nav>
+
+      <div className="sidebar-note">
+        <div className="sidebar-note-title">
+          <Star size={16} color="#94A3B8" />
+          <span className="sidebar-label">Favorites</span>
+        </div>
+        <p className="sidebar-label">Star your favorite templates for quick access.</p>
+      </div>
+
+      <div className="sidebar-footer">
+        <div className="pro-tip-card">
+          <div className="pro-tip-header">
+            <Sparkles size={16} color="#6366F1" />
+            <span className="sidebar-label">Unlock more</span>
+          </div>
+          <p className="sidebar-label">Get access to premium templates and features.</p>
+          <button type="button" className="pro-tip-action">
+            <span className="sidebar-label">Upgrade to Pro</span>
+            <ChevronRight size={14} />
+          </button>
+        </div>
+
+        <div className="sidebar-footer-links">
+          <button
+            type="button"
+            className="sidebar-footer-link"
+            title={showCollapsed ? 'Settings' : undefined}
+          >
+            <Settings size={16} />
+            <span className="sidebar-label">Settings</span>
+          </button>
+          <button
+            type="button"
+            className="sidebar-footer-link"
+            title={showCollapsed ? 'Help & Feedback' : undefined}
+          >
+            <HelpCircle size={16} />
+            <span className="sidebar-label">Help & Feedback</span>
+          </button>
+        </div>
+      </div>
+    </aside>
+  )
+}

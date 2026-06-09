@@ -1,0 +1,143 @@
+.tabs {
+  display: flex;
+  height: 100%;
+}
+
+.tab {
+  padding: 0 8px;
+  margin-right: 16px;
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.tab.active {
+  color: #0f172a;
+  border-bottom-color: #6366f1;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-btn {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #0f172a;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+.toolbar-btn:hover {
+  background-color: #f8fafc;
+}
+
+.toggle-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #0f172a;
+  cursor: pointer;
+  margin-left: 4px;
+}
+
+.toggle-switch {
+  width: 36px;
+  height: 20px;
+  background-color: #cbd5e1;
+  border-radius: 12px;
+  position: relative;
+  transition: background-color 0.2s;
+}
+
+.toggle-switch.active {
+  background-color: #6366f1;
+}
+
+.toggle-knob {
+  width: 16px;
+  height: 16px;
+  background-color: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.toggle-switch.active .toggle-knob {
+  transform: translateX(16px);
+}
+
+.editor-container {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+  background-color: #ffffff;
+}
+
+.line-numbers {
+  padding: 16px 8px 16px 16px;
+  text-align: right;
+  color: #94a3b8;
+  font-family: var(--gemini-font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  background-color: #ffffff;
+  user-select: none;
+  overflow-y: hidden;
+  min-width: 44px;
+}
+
+.code-textarea {
+  flex: 1;
+  padding: 16px;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: var(--gemini-font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  background-color: transparent;
+  white-space: pre;
+  overflow: auto;
+  color: #6366f1;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-item.success {
+  color: #10b981;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #10b981;
+}
+
+.status-right {
+  display: flex;
+  gap: 16px;
+}
