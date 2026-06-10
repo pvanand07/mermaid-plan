@@ -3,7 +3,7 @@ export interface Pan {
   y: number
 }
 
-export const PREVIEW_FIT_PADDING = 48
+export const PREVIEW_FIT_PADDING = 0
 export const MIN_ZOOM = 25
 export const MAX_ZOOM = 200
 
@@ -26,7 +26,6 @@ export function computeFitView(
   const availableHeight = containerHeight - PREVIEW_FIT_PADDING
 
   const rawScale = Math.min(
-    1,
     availableWidth / contentWidth,
     availableHeight / contentHeight,
   )
