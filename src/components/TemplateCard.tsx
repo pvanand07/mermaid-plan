@@ -23,7 +23,11 @@ export function TemplateCard({ template }: { template: Template }) {
         <div className="template-card-footer">
           <Link
             to="/editor"
-            state={{ code: template.mermaidCode, title: template.name }}
+            state={{
+              code: template.mermaidCode,
+              title: template.name,
+              description: template.description,
+            }}
             className="template-use-btn"
           >
             Use template

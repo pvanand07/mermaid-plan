@@ -1,4 +1,12 @@
-export type { Diagram, Folder, Template } from './types'
+export type {
+  Diagram,
+  DiagramRecord,
+  DiagramVersionRecord,
+  Folder,
+  FolderRecord,
+  Template,
+  VersionField,
+} from './types'
 export { diagrams, folders } from './diagrams'
 export { templates, templateCategories } from './templates'
 export { defaultEditorCode } from './defaultEditorCode'

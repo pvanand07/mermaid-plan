@@ -10,11 +10,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "dexie": "^4.4.3",
+    "dexie-react-hooks": "^4.4.0",
     "lucide-react": "^1.17.0",
     "mermaid": "^11.15.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
-    "react-router-dom": "^7.17.0"
+    "react-markdown": "^10.1.0",
+    "react-router-dom": "^7.17.0",
+    "rehype-sanitize": "^6.0.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

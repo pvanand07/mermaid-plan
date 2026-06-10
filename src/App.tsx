@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { DiagramStoreProvider } from './context/DiagramStoreContext'
 import { SidebarProvider } from './context/SidebarContext'
 import { MyDiagramsPage } from './pages/MyDiagramsPage'
 import { TemplatesPage } from './pages/TemplatesPage'
@@ -14,17 +15,19 @@ const redirects: Record<string, string> = {
 function App() {
   return (
     <BrowserRouter>
-      <SidebarProvider>
-        <Routes>
-          <Route path="/" element={<MyDiagramsPage />} />
-          {Object.entries(redirects).map(([from, to]) => (
-            <Route key={from} path={from} element={<Navigate to={to} replace />} />
-          ))}
-          <Route path="/templates" element={<TemplatesPage />} />
-          <Route path="/editor" element={<EditorPage />} />
-          <Route path="/editor/:id" element={<EditorPage />} />
-        </Routes>
-      </SidebarProvider>
+      <DiagramStoreProvider>
+        <SidebarProvider>
+          <Routes>
+            <Route path="/" element={<MyDiagramsPage />} />
+            {Object.entries(redirects).map(([from, to]) => (
+              <Route key={from} path={from} element={<Navigate to={to} replace />} />
+            ))}
+            <Route path="/templates" element={<TemplatesPage />} />
+            <Route path="/editor" element={<EditorPage />} />
+            <Route path="/editor/:id" element={<EditorPage />} />
+          </Routes>
+        </SidebarProvider>
+      </DiagramStoreProvider>
     </BrowserRouter>
   )
 }
