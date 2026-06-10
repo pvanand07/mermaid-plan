@@ -1638,6 +1638,66 @@
   color: var(--gemini-text-muted);
 }
 
+.version-history-stats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+}
+
+.version-diff-stat--add {
+  color: #15803d;
+}
+
+.version-diff-stat--remove {
+  color: #b91c1c;
+}
+
+.version-diff-stat--neutral {
+  color: var(--gemini-text-muted);
+}
+
+.version-history-title-change {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--gemini-text-muted);
+}
+
+.version-diff-preview {
+  margin: 0 0 10px;
+  padding: 8px;
+  border-radius: 6px;
+  background: #f8fafc;
+  border: 1px solid var(--gemini-border);
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.version-diff-line {
+  display: block;
+  white-space: pre;
+}
+
+.version-diff-line--add {
+  color: #15803d;
+  background: #f0fdf4;
+}
+
+.version-diff-line--remove {
+  color: #b91c1c;
+  background: #fef2f2;
+}
+
+.version-diff-more {
+  display: block;
+  margin-top: 4px;
+  color: var(--gemini-text-muted);
+  font-size: 11px;
+}
+
 .version-history-revisions {
   font-size: 12px;
   color: var(--gemini-text-muted);

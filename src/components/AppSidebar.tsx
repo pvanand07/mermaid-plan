@@ -2,7 +2,6 @@ import { Link, useLocation } from 'react-router-dom'
 import {
   ChevronLeft,
   ChevronRight,
-  Download,
   HelpCircle,
   LayoutGrid,
   LayoutTemplate,
@@ -11,7 +10,6 @@ import {
   Settings,
   Sparkles,
   Star,
-  Trash2,
 } from 'lucide-react'
 import { useSidebar } from '../hooks/useSidebar'
 import { cn } from '../lib/cn'
@@ -21,8 +19,6 @@ const navItems = [
   { label: 'My Diagrams', icon: LayoutGrid, path: '/' },
   { label: 'Templates', icon: LayoutTemplate, path: '/templates' },
   { label: 'Examples', icon: PlayCircle, path: '/examples' },
-  { label: 'Import', icon: Download, path: '/import' },
-  { label: 'Trash', icon: Trash2, path: '/trash' },
 ]
 
 export function AppSidebar() {

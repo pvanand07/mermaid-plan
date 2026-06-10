@@ -1,18 +1,19 @@
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon, Filter, Grid3x3, List, Plus } from 'lucide-react'
+import { ChevronRight as ChevronRightIcon, Plus } from 'lucide-react'
 import { AppLayout } from '../components/AppLayout'
 import { DiagramCard } from '../components/DiagramCard'
 import { FolderCard } from '../components/FolderCard'
-import { ImportCodeButton } from '../components/ImportCodeButton'
 import { PageHeader } from '../components/PageHeader'
 import { SearchInput } from '../components/SearchInput'
-import { useDiagramStore } from '../context/DiagramStoreContext'
 import { useFolderBrowser } from '../hooks/useFolderBrowser'
-import { cn } from '../lib/cn'
+import { getFolderName } from '../lib/folders/pathUtils'
 
 export function MyDiagramsPage() {
-  const { loading, dbError } = useDiagramStore()
+  const [query, setQuery] = useState('')
   const {
+    loading,
+    dbError,
     currentPath,
     childFolders,
     recentDiagrams,
@@ -20,6 +21,25 @@ export function MyDiagramsPage() {
     navigateToFolder,
     handleCreateFolder,
   } = useFolderBrowser()
+
+  const q = query.trim().toLowerCase()
+
+  const filteredFolders = useMemo(() => {
+    if (!q) return childFolders
+    return childFolders.filter(
+      (f) => f.name.toLowerCase().includes(q) || f.path.toLowerCase().includes(q),
+    )
+  }, [childFolders, q])
+
+  const filteredDiagrams = useMemo(() => {
+    if (!q) return recentDiagrams
+    return recentDiagrams.filter(
+      (d) =>
+        d.title.toLowerCase().includes(q) ||
+        d.folderPath.toLowerCase().includes(q) ||
+        getFolderName(d.folderPath).toLowerCase().includes(q),
+    )
+  }, [recentDiagrams, q])
 
   const newDiagramHref = currentPath
     ? `/editor?folderPath=${encodeURIComponent(currentPath)}`
@@ -49,13 +69,10 @@ export function MyDiagramsPage() {
             title="My Diagrams"
             subtitle="All your saved diagrams in one place."
             actions={
-              <>
-                <ImportCodeButton />
-                <Link to={newDiagramHref} className="btn btn-primary">
-                  <Plus size={16} />
-                  New Diagram
-                </Link>
-              </>
+              <Link to={newDiagramHref} className="btn btn-primary">
+                <Plus size={16} />
+                New Diagram
+              </Link>
             }
           />
 
@@ -75,28 +92,17 @@ export function MyDiagramsPage() {
           </nav>
 
           <div className="toolbar-row">
-            <SearchInput placeholder="Search diagrams and folders..." />
-            <button type="button" className="filter-btn">
-              Sort: Recently edited
-              <ChevronRight size={16} className="icon-subtle chevron-rotate-90" />
-            </button>
-            <button type="button" className="filter-btn">
-              <Filter size={16} />
-            </button>
-            <div className="view-toggle">
-              <button type="button" className="view-toggle-btn active" aria-label="Grid view">
-                <Grid3x3 size={16} />
-              </button>
-              <button type="button" className="view-toggle-btn" aria-label="List view">
-                <List size={16} />
-              </button>
-            </div>
+            <SearchInput
+              placeholder="Search diagrams and folders..."
+              value={query}
+              onChange={setQuery}
+            />
           </div>
 
           <section className="content-section">
             <h2 className="section-heading">Folders</h2>
             <div className="folder-row">
-              {childFolders.map((folder) => (
+              {filteredFolders.map((folder) => (
                 <FolderCard
                   key={folder.path}
                   path={folder.path}
@@ -115,40 +121,17 @@ export function MyDiagramsPage() {
           </section>
 
           <section className="content-section">
-            <div className="section-heading-row">
-              <h2 className="section-heading">{currentPath ? 'Diagrams' : 'Recent'}</h2>
-              {!currentPath && (
-                <button type="button" className="btn-ghost">
-                  View all →
-                </button>
-              )}
-            </div>
-            {recentDiagrams.length === 0 ? (
+            <h2 className="section-heading">{currentPath ? 'Diagrams' : 'Recent'}</h2>
+            {filteredDiagrams.length === 0 ? (
               <p className="empty-folder-message">No diagrams in this folder yet.</p>
             ) : (
               <div className="card-grid">
-                {recentDiagrams.map((diagram) => (
+                {filteredDiagrams.map((diagram) => (
                   <DiagramCard key={diagram.id} diagram={diagram} />
                 ))}
               </div>
             )}
           </section>
-
-          <div className="pagination-row">
-            <div style={{ flex: 1 }} />
-            <div className="pagination">
-              <button type="button" className="pagination-btn nav">
-                <ChevronLeft size={16} />
-              </button>
-              <button type="button" className={cn('pagination-btn', 'active')}>
-                1
-              </button>
-              <button type="button" className="pagination-btn nav">
-                <ChevronRight size={16} />
-              </button>
-            </div>
-            <div style={{ flex: 1 }} />
-          </div>
         </div>
       </main>
     </AppLayout>

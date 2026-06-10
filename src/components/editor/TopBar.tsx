@@ -1,13 +1,5 @@
 import { useState } from 'react'
-import {
-  AlertCircle,
-  CheckCircle2,
-  Loader2,
-  MoreVertical,
-  Pencil,
-  Play,
-  Users,
-} from 'lucide-react'
+import { AlertCircle, CheckCircle2, Loader2, MoreVertical, Pencil } from 'lucide-react'
 import type { DiagramVersionRecord } from '../../data/types'
 import type { SaveStatus } from '../../hooks/useDiagramEditor'
 import { MobileMenuButton } from '../MobileMenuButton'
@@ -19,29 +11,23 @@ interface TopBarProps {
   title: string
   code: string
   saveStatus: SaveStatus
-  mermaidRevision: number
-  noteRevision: number
   folderPath: string
   folderPaths: string[]
   versions: DiagramVersionRecord[]
   onTitleChange: (title: string) => void
   onFolderChange: (folderPath: string) => void
-  onRender: () => void
-  onRestoreVersion: (snapshotVersion: number) => void
+  onRestoreVersion: (versionId: string) => void
 }
 
 export function TopBar({
   title,
   code,
   saveStatus,
-  mermaidRevision,
-  noteRevision,
   folderPath,
   folderPaths,
   versions,
   onTitleChange,
   onFolderChange,
-  onRender,
   onRestoreVersion,
 }: TopBarProps) {
   const [editingTitle, setEditingTitle] = useState(false)
@@ -122,24 +108,12 @@ export function TopBar({
               />
               <span>{saveLabel}</span>
             </div>
-            <div className="revision-badges">
-              <span className="revision-badge">Diagram v{mermaidRevision}</span>
-              {noteRevision > 0 && (
-                <span className="revision-badge">Note v{noteRevision}</span>
-              )}
-            </div>
           </div>
         </div>
       </div>
 
       <div className="topbar-right">
-        <button type="button" className="btn btn-primary" onClick={onRender}>
-          <Play size={14} fill="currentColor" /> Render
-        </button>
         <VersionHistoryPanel versions={versions} onRestore={onRestoreVersion} />
-        <button type="button" className="btn btn-secondary">
-          <Users size={14} /> Share
-        </button>
         <ExportDropdown code={code} filename={title} variant="topbar" />
         <button type="button" className="btn-icon-only">
           <MoreVertical size={16} />

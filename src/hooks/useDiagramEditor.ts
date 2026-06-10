@@ -2,9 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { storageConfig } from '../config/storage'
-import type { DiagramRecord, VersionField } from '../data/types'
-import { useDiagramStore } from '../context/DiagramStoreContext'
-import { getDiagram } from '../lib/db/diagramRepository'
+import type { DiagramRecord } from '../data/types'
+import { useDbReady } from './useDbReady'
+import { createDiagram, getDiagram, updateDiagram } from '../lib/db/diagramRepository'
 import { createVersionSnapshot, listVersions, restoreVersion } from '../lib/db/versionRepository'
 import { noteExcerpt } from '../lib/formatEditedAgo'
 
@@ -19,17 +19,6 @@ interface UseDiagramEditorOptions {
   templateNote?: string
 }
 
-function computeChangedFields(
-  prev: { title: string; code: string; noteMd?: string },
-  next: { title: string; code: string; noteMd?: string },
-): VersionField[] {
-  const fields: VersionField[] = []
-  if (prev.code !== next.code) fields.push('mermaidCode')
-  if ((prev.noteMd ?? '') !== (next.noteMd ?? '')) fields.push('noteMd')
-  if (prev.title !== next.title) fields.push('title')
-  return fields
-}
-
 export function useDiagramEditor({
   id,
   initialCode,
@@ -39,7 +28,7 @@ export function useDiagramEditor({
   templateNote,
 }: UseDiagramEditorOptions) {
   const navigate = useNavigate()
-  const { createDiagram, updateDiagram, dbError } = useDiagramStore()
+  const { dbError } = useDbReady()
 
   const [diagramId, setDiagramId] = useState<string | undefined>(id)
   const [title, setTitle] = useState(initialTitle)
@@ -47,9 +36,6 @@ export function useDiagramEditor({
   const [noteMd, setNoteMd] = useState(initialNoteMd ?? templateNote ?? '')
   const [folderPath, setFolderPath] = useState(initialFolderPath)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
-  const [mermaidRevision, setMermaidRevision] = useState(1)
-  const [noteRevision, setNoteRevision] = useState(0)
-  const [snapshotVersion, setSnapshotVersion] = useState(1)
   const [loaded, setLoaded] = useState(!id)
 
   const lastSavedRef = useRef({
@@ -69,10 +55,7 @@ export function useDiagramEditor({
   )
 
   useEffect(() => {
-    if (!id) {
-      setLoaded(true)
-      return
-    }
+    if (!id) return
     let cancelled = false
     getDiagram(id).then((record) => {
       if (cancelled) return
@@ -85,9 +68,6 @@ export function useDiagramEditor({
       setCode(record.mermaidCode)
       setNoteMd(record.noteMd ?? '')
       setFolderPath(record.folderPath)
-      setMermaidRevision(record.mermaidRevision)
-      setNoteRevision(record.noteRevision)
-      setSnapshotVersion(record.snapshotVersion)
       lastSavedRef.current = {
         title: record.title,
         code: record.mermaidCode,
@@ -104,10 +84,14 @@ export function useDiagramEditor({
 
   const persist = useCallback(async () => {
     if (isSavingRef.current) return
-    const current = { title, code, noteMd }
-    const changedFields = computeChangedFields(lastSavedRef.current, current)
+
+    const contentChanged =
+      title !== lastSavedRef.current.title ||
+      code !== lastSavedRef.current.code ||
+      (noteMd ?? '') !== (lastSavedRef.current.noteMd ?? '')
     const folderChanged = folderPath !== lastSavedRef.current.folderPath
-    if (changedFields.length === 0 && !folderChanged) {
+
+    if (!contentChanged && !folderChanged) {
       setSaveStatus('saved')
       return
     }
@@ -129,35 +113,11 @@ export function useDiagramEditor({
         navigate(`/editor/${record.id}`, { replace: true })
         lastSnapshotAtRef.current = Date.now()
         lastSavedRef.current = { title, code, noteMd, folderPath }
-        setMermaidRevision(record.mermaidRevision)
-        setNoteRevision(record.noteRevision)
-        setSnapshotVersion(record.snapshotVersion)
-        if (changedFields.length > 0) {
-          await createVersionSnapshot(record, changedFields)
+        if (storageConfig.versioning.enabled) {
+          await createVersionSnapshot(record)
         }
         setSaveStatus('saved')
         return
-      }
-
-      const prev = await getDiagram(diagramId)
-      if (!prev) throw new Error('Diagram not found')
-
-      let nextMermaidRevision = prev.mermaidRevision
-      let nextNoteRevision = prev.noteRevision
-      if (changedFields.includes('mermaidCode')) nextMermaidRevision++
-      if (changedFields.includes('noteMd')) nextNoteRevision++
-
-      let nextSnapshotVersion = prev.snapshotVersion
-      const now = Date.now()
-      const shouldSnapshot =
-        storageConfig.versioning.enabled &&
-        changedFields.some((f) => f === 'mermaidCode' || f === 'noteMd' || f === 'title') &&
-        (lastSnapshotAtRef.current === null ||
-          now - lastSnapshotAtRef.current >= storageConfig.versioning.throttleMs)
-
-      if (shouldSnapshot) {
-        nextSnapshotVersion = prev.snapshotVersion + 1
-        lastSnapshotAtRef.current = now
       }
 
       record = await updateDiagram(diagramId, {
@@ -165,18 +125,20 @@ export function useDiagramEditor({
         mermaidCode: code,
         noteMd: noteMd || null,
         folderPath,
-        mermaidRevision: nextMermaidRevision,
-        noteRevision: nextNoteRevision,
-        snapshotVersion: nextSnapshotVersion,
       })
 
+      const now = Date.now()
+      const shouldSnapshot =
+        storageConfig.versioning.enabled &&
+        contentChanged &&
+        (lastSnapshotAtRef.current === null ||
+          now - lastSnapshotAtRef.current >= storageConfig.versioning.throttleMs)
+
       if (shouldSnapshot) {
-        await createVersionSnapshot(record, changedFields)
+        lastSnapshotAtRef.current = now
+        await createVersionSnapshot(record)
       }
 
-      setMermaidRevision(record.mermaidRevision)
-      setNoteRevision(record.noteRevision)
-      setSnapshotVersion(record.snapshotVersion)
       lastSavedRef.current = { title, code, noteMd, folderPath }
       setSaveStatus('saved')
     } catch {
@@ -184,16 +146,7 @@ export function useDiagramEditor({
     } finally {
       isSavingRef.current = false
     }
-  }, [
-    code,
-    createDiagram,
-    diagramId,
-    folderPath,
-    navigate,
-    noteMd,
-    title,
-    updateDiagram,
-  ])
+  }, [code, diagramId, folderPath, navigate, noteMd, title])
 
   useEffect(() => {
     if (!loaded) return
@@ -225,15 +178,12 @@ export function useDiagramEditor({
   }, [saveStatus])
 
   const handleRestoreVersion = useCallback(
-    async (version: number) => {
+    async (versionId: string) => {
       if (!diagramId) return
-      const restored = await restoreVersion(diagramId, version)
+      const restored = await restoreVersion(diagramId, versionId)
       setTitle(restored.title)
       setCode(restored.mermaidCode)
       setNoteMd(restored.noteMd ?? '')
-      setMermaidRevision(restored.mermaidRevision)
-      setNoteRevision(restored.noteRevision)
-      setSnapshotVersion(restored.snapshotVersion)
       setFolderPath(restored.folderPath)
       lastSavedRef.current = {
         title: restored.title,
@@ -258,9 +208,6 @@ export function useDiagramEditor({
     folderPath,
     setFolderPath,
     saveStatus,
-    mermaidRevision,
-    noteRevision,
-    snapshotVersion,
     versions: versions ?? [],
     subtitle,
     dbError,

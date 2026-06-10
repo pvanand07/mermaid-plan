@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import mermaid from 'mermaid'
 import { AlignLeft, CheckCircle2, Copy, Eye, Pencil } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { NoteEditor } from './NoteEditor'
@@ -10,8 +11,6 @@ export type NoteView = 'edit' | 'preview'
 interface CodeEditorProps {
   code: string
   setCode: (code: string) => void
-  autoRender: boolean
-  setAutoRender: (val: boolean) => void
   onFormat: () => void
   onCopy: () => void
   panelMode: EditorPanelMode
@@ -23,8 +22,6 @@ interface CodeEditorProps {
 export function CodeEditor({
   code,
   setCode,
-  autoRender,
-  setAutoRender,
   onFormat,
   onCopy,
   panelMode,
@@ -33,12 +30,25 @@ export function CodeEditor({
   setNoteMd,
 }: CodeEditorProps) {
   const [noteView, setNoteView] = useState<NoteView>('edit')
+  const [validateMessage, setValidateMessage] = useState<string | null>(null)
+  const [validateOk, setValidateOk] = useState(true)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const lineNumbersRef = useRef<HTMLDivElement>(null)
 
   const handleScroll = () => {
     if (textareaRef.current && lineNumbersRef.current) {
       lineNumbersRef.current.scrollTop = textareaRef.current.scrollTop
+    }
+  }
+
+  const handleValidate = async () => {
+    try {
+      await mermaid.parse(code)
+      setValidateOk(true)
+      setValidateMessage('No issues detected')
+    } catch (err) {
+      setValidateOk(false)
+      setValidateMessage(err instanceof Error ? err.message : 'Invalid syntax')
     }
   }
 
@@ -94,28 +104,9 @@ export function CodeEditor({
             <button type="button" className="toolbar-btn" onClick={onCopy}>
               <Copy size={14} className="icon-muted" /> Copy
             </button>
-            <button type="button" className="toolbar-btn">
+            <button type="button" className="toolbar-btn" onClick={() => void handleValidate()}>
               <CheckCircle2 size={14} className="icon-muted" /> Validate
             </button>
-            <div className="divider" />
-            <div
-              className="toggle-wrapper"
-              onClick={() => setAutoRender(!autoRender)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  setAutoRender(!autoRender)
-                }
-              }}
-              role="switch"
-              aria-checked={autoRender}
-              tabIndex={0}
-            >
-              <span>Auto-render</span>
-              <div className={cn('toggle-switch', autoRender && 'active')}>
-                <div className="toggle-knob" />
-              </div>
-            </div>
           </div>
         )}
       </div>
@@ -139,8 +130,9 @@ export function CodeEditor({
           </div>
 
           <div className="panel-footer">
-            <div className="status-item success">
-              <span className="dot" /> No issues detected
+            <div className={`status-item${validateOk ? ' success' : ''}`}>
+              <span className="dot" />
+              {validateMessage ?? 'No issues detected'}
             </div>
             <div className="status-right">
               <span>Ln 1, Col 1</span>

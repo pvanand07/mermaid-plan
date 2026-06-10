@@ -1,8 +1,7 @@
 import { Link } from 'react-router-dom'
-import { ChevronDown, Grid3x3, MoreVertical, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { AppLayout } from '../components/AppLayout'
-import { ImportCodeButton } from '../components/ImportCodeButton'
 import { PageHeader } from '../components/PageHeader'
 import { SearchInput } from '../components/SearchInput'
 import { TemplateCard } from '../components/TemplateCard'
@@ -11,14 +10,21 @@ import { cn } from '../lib/cn'
 
 export function TemplatesPage() {
   const [activeCategory, setActiveCategory] = useState('All')
+  const [query, setQuery] = useState('')
 
-  const visibleTemplates = useMemo(
-    () =>
-      activeCategory === 'All'
-        ? templates
-        : templates.filter((t) => t.category === activeCategory),
-    [activeCategory],
-  )
+  const visibleTemplates = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return templates.filter((t) => {
+      const inCategory = activeCategory === 'All' || t.category === activeCategory
+      if (!inCategory) return false
+      if (!q) return true
+      return (
+        t.name.toLowerCase().includes(q) ||
+        t.description.toLowerCase().includes(q) ||
+        t.category.toLowerCase().includes(q)
+      )
+    })
+  }, [activeCategory, query])
 
   return (
     <AppLayout>
@@ -28,30 +34,19 @@ export function TemplatesPage() {
             title="Templates"
             subtitle="Choose a template to get started quickly."
             actions={
-              <>
-                <ImportCodeButton />
-                <Link to="/editor" className="btn btn-primary">
-                  <Plus size={16} />
-                  Blank Diagram
-                </Link>
-                <button type="button" className="btn-icon-only">
-                  <MoreVertical size={16} />
-                </button>
-              </>
+              <Link to="/editor" className="btn btn-primary">
+                <Plus size={16} />
+                Blank Diagram
+              </Link>
             }
           />
 
           <div className="toolbar-row">
-            <SearchInput placeholder="Search templates..." />
-            <button type="button" className="filter-btn">
-              <Grid3x3 size={16} className="icon-subtle" />
-              All Categories
-              <ChevronDown size={16} className="icon-subtle" />
-            </button>
-            <button type="button" className="filter-btn">
-              Sort: Popular
-              <ChevronDown size={16} className="icon-subtle" />
-            </button>
+            <SearchInput
+              placeholder="Search templates..."
+              value={query}
+              onChange={setQuery}
+            />
           </div>
 
           <div className="chip-row">
@@ -71,13 +66,6 @@ export function TemplatesPage() {
             {visibleTemplates.map((template) => (
               <TemplateCard key={template.id} template={template} />
             ))}
-          </div>
-
-          <div className="load-more-row">
-            <button type="button" className="btn btn-secondary">
-              Load more templates
-              <ChevronDown size={16} className="icon-subtle" />
-            </button>
           </div>
         </div>
       </main>

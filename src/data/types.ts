@@ -29,8 +29,6 @@ export interface Template {
   mermaidCode: string
 }
 
-export type VersionField = 'mermaidCode' | 'noteMd' | 'title'
-
 export interface DiagramRecord {
   id: string
   title: string
@@ -41,9 +39,6 @@ export interface DiagramRecord {
   starred: boolean
   createdAt: string
   updatedAt: string
-  mermaidRevision: number
-  noteRevision: number
-  snapshotVersion: number
 }
 
 export interface FolderRecord {
@@ -54,13 +49,9 @@ export interface FolderRecord {
 export interface DiagramVersionRecord {
   id: string
   diagramId: string
-  snapshotVersion: number
-  mermaidRevision: number
-  noteRevision: number
   mermaidCode: string
   noteMd?: string
   title: string
-  changedFields: VersionField[]
   createdAt: string
 }
 
@@ -78,7 +69,4 @@ export interface UpdateDiagramPatch {
   noteMd?: string | null
   folderPath?: string
   starred?: boolean
-  mermaidRevision?: number
-  noteRevision?: number
-  snapshotVersion?: number
 }

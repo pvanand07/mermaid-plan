@@ -36,9 +36,6 @@ export async function createDiagram(input: CreateDiagramInput): Promise<DiagramR
     starred: input.starred ?? false,
     createdAt: now,
     updatedAt: now,
-    mermaidRevision: 1,
-    noteRevision: noteMd ? 1 : 0,
-    snapshotVersion: 1,
   }
   await db.diagrams.add(record)
   return record

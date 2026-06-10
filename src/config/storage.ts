@@ -1,6 +1,5 @@
 export const storageConfig = {
   dbName: 'MermaidStudio',
-  seedOnEmpty: true,
   autosaveDebounceMs: 1500,
   versioning: {
     enabled: true,

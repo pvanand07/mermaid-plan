@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { FileText, Folder, MoreVertical } from 'lucide-react'
 import type { DiagramRecord } from '../data/types'
 import { getDiagramBadge } from '../data/meta'
-import { useDiagramStore } from '../context/DiagramStoreContext'
+import { toggleStar } from '../lib/db/diagramRepository'
 import { formatEditedAgo } from '../lib/formatEditedAgo'
 import { getFolderName } from '../lib/folders/pathUtils'
 import { cn } from '../lib/cn'
@@ -10,7 +10,6 @@ import { MermaidRender } from './MermaidRender'
 import { StarButton } from './StarButton'
 
 export function DiagramCard({ diagram }: { diagram: DiagramRecord }) {
-  const { toggleStar } = useDiagramStore()
   const badgeClass = getDiagramBadge(diagram.type)
   const hasNote = Boolean(diagram.noteMd?.trim())
 

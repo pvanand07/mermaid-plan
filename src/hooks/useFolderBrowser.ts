@@ -1,7 +1,9 @@
 import { useMemo } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
 import { useSearchParams } from 'react-router-dom'
 import type { DiagramRecord } from '../data/types'
-import { useDiagramStore } from '../context/DiagramStoreContext'
+import { listDiagrams } from '../lib/db/diagramRepository'
+import { createFolder, listAllFolderPaths } from '../lib/db/folderRepository'
 import {
   countDiagramsInSubtree,
   getBreadcrumbSegments,
@@ -9,6 +11,7 @@ import {
   getFolderName,
   normalizeFolderPath,
 } from '../lib/folders/pathUtils'
+import { useDbReady } from './useDbReady'
 
 const FOLDER_COLORS = [
   { color: 'tint-violet-bg', iconColor: 'tint-violet-text' },
@@ -25,25 +28,39 @@ function colorForPath(path: string) {
 
 export function useFolderBrowser() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const { diagrams, folderPaths, createFolder } = useDiagramStore()
+  const { ready, dbError } = useDbReady()
 
+  const diagrams = useLiveQuery(
+    () => (ready && !dbError ? listDiagrams() : []),
+    [ready, dbError],
+    [],
+  )
+
+  const folderPaths = useLiveQuery(
+    () => (ready && !dbError ? listAllFolderPaths() : []),
+    [ready, dbError],
+    [],
+  )
+
+  const diagramList = useMemo(() => diagrams ?? [], [diagrams])
+  const folderPathList = useMemo(() => folderPaths ?? [], [folderPaths])
   const currentPath = normalizeFolderPath(searchParams.get('path') ?? '')
 
   const childFolders = useMemo(() => {
-    return getChildFolderPaths(currentPath, folderPaths).map((path) => ({
+    return getChildFolderPaths(currentPath, folderPathList).map((path) => ({
       path,
       name: getFolderName(path),
       count: countDiagramsInSubtree(
         path,
-        diagrams.map((d) => d.folderPath),
+        diagramList.map((d) => d.folderPath),
       ),
       ...colorForPath(path),
     }))
-  }, [currentPath, folderPaths, diagrams])
+  }, [currentPath, folderPathList, diagramList])
 
   const diagramsInFolder = useMemo(() => {
-    return diagrams.filter((d) => normalizeFolderPath(d.folderPath) === currentPath)
-  }, [diagrams, currentPath])
+    return diagramList.filter((d) => normalizeFolderPath(d.folderPath) === currentPath)
+  }, [diagramList, currentPath])
 
   const breadcrumbs = useMemo(() => getBreadcrumbSegments(currentPath), [currentPath])
 
@@ -65,8 +82,8 @@ export function useFolderBrowser() {
 
   const recentDiagrams = useMemo((): DiagramRecord[] => {
     if (currentPath) return diagramsInFolder
-    return [...diagrams].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 12)
-  }, [currentPath, diagrams, diagramsInFolder])
+    return [...diagramList].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 12)
+  }, [currentPath, diagramList, diagramsInFolder])
 
   return {
     currentPath,
@@ -76,6 +93,8 @@ export function useFolderBrowser() {
     breadcrumbs,
     navigateToFolder,
     handleCreateFolder,
-    allDiagrams: diagrams,
+    allDiagrams: diagramList,
+    loading: !ready,
+    dbError,
   }
 }
