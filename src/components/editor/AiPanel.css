@@ -269,3 +269,36 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.ai-tool-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border-radius: var(--gemini-radius-sm);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.ai-tool-status--ok {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #047857;
+}
+
+.ai-tool-status--error {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #c2410c;
+}
+
+.ai-tool-status-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ai-tool-status-summary {
+  font-weight: 600;
+}

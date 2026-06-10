@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
-import mermaid from 'mermaid'
 import { AlignLeft, CheckCircle2, Copy, Eye, Pencil, Sparkles } from 'lucide-react'
+import { formatValidationMessage, validateMermaidDiagram } from '../../lib/mermaid/validateDiagram'
 import { cn } from '../../lib/cn'
 import { AiPanel } from './AiPanel'
 import { NoteEditor } from './NoteEditor'
@@ -37,6 +37,12 @@ export function CodeEditor({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const lineNumbersRef = useRef<HTMLDivElement>(null)
 
+  const updateCode = (next: string) => {
+    setValidateOk(true)
+    setValidateMessage(null)
+    setCode(next)
+  }
+
   const handleScroll = () => {
     if (textareaRef.current && lineNumbersRef.current) {
       lineNumbersRef.current.scrollTop = textareaRef.current.scrollTop
@@ -44,14 +50,9 @@ export function CodeEditor({
   }
 
   const handleValidate = async () => {
-    try {
-      await mermaid.parse(code)
-      setValidateOk(true)
-      setValidateMessage('No issues detected')
-    } catch (err) {
-      setValidateOk(false)
-      setValidateMessage(err instanceof Error ? err.message : 'Invalid syntax')
-    }
+    const result = await validateMermaidDiagram(code)
+    setValidateOk(result.ok)
+    setValidateMessage(result.ok ? 'No issues detected' : formatValidationMessage(result))
   }
 
   const lineCount = code.split('\n').length
@@ -62,6 +63,7 @@ export function CodeEditor({
       <AiPanel
         open={aiOpen}
         diagramCode={code}
+        onDiagramUpdate={updateCode}
         onMinimize={() => setAiOpen(false)}
       />
       <div className="panel-header">
@@ -141,7 +143,7 @@ export function CodeEditor({
             <textarea
               ref={textareaRef}
               value={code}
-              onChange={(e) => setCode(e.target.value)}
+              onChange={(e) => updateCode(e.target.value)}
               onScroll={handleScroll}
               spellCheck={false}
               className="code-textarea"

@@ -1,4 +1,9 @@
-import type { AgentStreamRequest } from './types'
+import type {
+  AgentContinueRequest,
+  AgentStreamPauseInfo,
+  AgentStreamRequest,
+  UpdateMermaidToolCall,
+} from './types'
 
 export class AgentChatError extends Error {
   status?: number
@@ -12,8 +17,14 @@ export class AgentChatError extends Error {
 
 interface StreamHandlers {
   onDelta: (delta: string) => void
+  onToolCall?: (call: UpdateMermaidToolCall) => void
   onDone?: (content: string) => void
   onError?: (message: string) => void
+}
+
+interface StreamProcessResult {
+  finished: boolean
+  paused?: AgentStreamPauseInfo
 }
 
 function parseSseBlock(block: string): { event: string; data: string } | null {
@@ -35,7 +46,8 @@ function parseSseBlock(block: string): { event: string; data: string } | null {
 function processSseBuffer(
   buffer: string,
   handlers: StreamHandlers,
-): { rest: string; finished: boolean } {
+  state: { lastToolCall?: UpdateMermaidToolCall; sessionId?: string },
+): { rest: string; result?: StreamProcessResult } {
   let rest = buffer
   let boundary = rest.indexOf('\n\n')
 
@@ -48,10 +60,38 @@ function processSseBuffer(
       if (parsed.event === 'text') {
         const payload = JSON.parse(parsed.data) as { delta?: string }
         if (payload.delta) handlers.onDelta(payload.delta)
+      } else if (parsed.event === 'meta') {
+        const payload = JSON.parse(parsed.data) as { sessionId?: string }
+        if (payload.sessionId) state.sessionId = payload.sessionId
+      } else if (parsed.event === 'tool_call') {
+        const payload = JSON.parse(parsed.data) as UpdateMermaidToolCall
+        state.lastToolCall = payload
+        handlers.onToolCall?.(payload)
+      } else if (parsed.event === 'paused') {
+        const payload = JSON.parse(parsed.data) as {
+          sessionId?: string
+          toolCallId?: string
+        }
+        const sessionId = payload.sessionId ?? state.sessionId
+        const toolCall = state.lastToolCall
+
+        if (sessionId && payload.toolCallId && toolCall) {
+          return {
+            rest,
+            result: {
+              finished: true,
+              paused: {
+                sessionId,
+                toolCallId: payload.toolCallId,
+                toolCall,
+              },
+            },
+          }
+        }
       } else if (parsed.event === 'done') {
         const payload = JSON.parse(parsed.data) as { message?: { content?: string } }
         handlers.onDone?.(payload.message?.content ?? '')
-        return { rest, finished: true }
+        return { rest, result: { finished: true } }
       } else if (parsed.event === 'error') {
         const payload = JSON.parse(parsed.data) as { error?: string }
         const message = payload.error ?? 'Agent request failed'
@@ -63,17 +103,18 @@ function processSseBuffer(
     boundary = rest.indexOf('\n\n')
   }
 
-  return { rest, finished: false }
+  return { rest }
 }
 
 async function consumeSseStream(
   body: ReadableStream<Uint8Array>,
   handlers: StreamHandlers,
   signal?: AbortSignal,
-): Promise<void> {
+): Promise<AgentStreamPauseInfo | undefined> {
   const reader = body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
+  const state: { lastToolCall?: UpdateMermaidToolCall; sessionId?: string } = {}
 
   try {
     while (true) {
@@ -87,20 +128,22 @@ async function consumeSseStream(
         buffer += decoder.decode(value, { stream: true })
       }
 
-      const processed = processSseBuffer(buffer, handlers)
+      const processed = processSseBuffer(buffer, handlers, state)
       buffer = processed.rest
-      if (processed.finished) {
+
+      if (processed.result?.finished) {
         await reader.cancel()
-        return
+        return processed.result.paused
       }
 
       if (done) {
         buffer += decoder.decode()
-        const final = processSseBuffer(buffer, handlers)
-        if (final.finished) {
+        const final = processSseBuffer(buffer, handlers, state)
+        if (final.result?.finished) {
           await reader.cancel()
+          return final.result.paused
         }
-        return
+        return undefined
       }
     }
   } finally {
@@ -108,12 +151,13 @@ async function consumeSseStream(
   }
 }
 
-export async function streamAgentChat(
-  request: AgentStreamRequest,
+async function postAgentStream(
+  endpoint: string,
+  request: AgentStreamRequest | AgentContinueRequest,
   handlers: StreamHandlers,
   signal?: AbortSignal,
-): Promise<void> {
-  const response = await fetch('/api/agent/chat/stream', {
+): Promise<AgentStreamPauseInfo | undefined> {
+  const response = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
@@ -135,5 +179,21 @@ export async function streamAgentChat(
     throw new AgentChatError('No response stream')
   }
 
-  await consumeSseStream(response.body, handlers, signal)
+  return consumeSseStream(response.body, handlers, signal)
+}
+
+export async function streamAgentChat(
+  request: AgentStreamRequest,
+  handlers: StreamHandlers,
+  signal?: AbortSignal,
+): Promise<AgentStreamPauseInfo | undefined> {
+  return postAgentStream('/api/agent/chat/stream', request, handlers, signal)
+}
+
+export async function continueAgentChat(
+  request: AgentContinueRequest,
+  handlers: StreamHandlers,
+  signal?: AbortSignal,
+): Promise<AgentStreamPauseInfo | undefined> {
+  return postAgentStream('/api/agent/chat/continue', request, handlers, signal)
 }

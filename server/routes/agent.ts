@@ -2,18 +2,34 @@ import { Hono } from 'hono'
 import { streamSSE } from 'hono/streaming'
 import { z } from 'zod'
 import { config } from '../config.js'
-import { createAgentRun } from '../agent/runAgent.js'
+import { createAgentContinueRun, createAgentRun } from '../agent/runAgent.js'
+import { createAgentSession, getAgentSessionAccessor } from '../agent/sessionStore.js'
+import { streamAgentResult } from '../agent/streamRun.js'
+import type { UpdateMermaidInput } from '../agent/tools/updateMermaid.js'
 import type { AgentChatResponse } from '../types.js'
 
+const messageSchema = z.object({
+  role: z.enum(['user', 'assistant']),
+  content: z.string().min(1),
+})
+
+const toolResultSchema = z.object({
+  ok: z.boolean(),
+  error: z.string().optional(),
+  phase: z.enum(['parse', 'render']).optional(),
+  diagramType: z.string().optional(),
+})
+
 const chatRequestSchema = z.object({
-  messages: z
-    .array(
-      z.object({
-        role: z.enum(['user', 'assistant']),
-        content: z.string().min(1),
-      }),
-    )
-    .min(1),
+  messages: z.array(messageSchema).min(1),
+  diagramCode: z.string().optional(),
+  model: z.string().min(1).optional(),
+})
+
+const continueRequestSchema = z.object({
+  sessionId: z.string().min(1),
+  toolCallId: z.string().min(1),
+  toolResult: toolResultSchema,
   diagramCode: z.string().optional(),
   model: z.string().min(1).optional(),
 })
@@ -55,9 +71,13 @@ agentRoutes.post('/chat', async (c) => {
     return c.json({ error: 'Invalid request', details: parsed.error.flatten() }, 400)
   }
 
+  const { sessionId, accessor } = createAgentSession()
+
   try {
-    const { result, model } = createAgentRun(parsed.data)
+    const { result, model } = createAgentRun(parsed.data, { state: accessor })
     const [text, response] = await Promise.all([result.getText(), result.getResponse()])
+    const toolCalls = await result.getToolCalls()
+    const updateCall = toolCalls.find((call) => call.name === 'update_mermaid')
 
     const body: AgentChatResponse = {
       message: {
@@ -65,6 +85,15 @@ agentRoutes.post('/chat', async (c) => {
         content: text,
       },
       model,
+      sessionId,
+      paused: !!updateCall,
+      toolCall: updateCall
+        ? {
+            id: updateCall.id,
+            name: updateCall.name,
+            arguments: updateCall.arguments as UpdateMermaidInput,
+          }
+        : undefined,
       usage: response.usage
         ? {
             inputTokens: response.usage.inputTokens,
@@ -89,36 +118,48 @@ agentRoutes.post('/chat/stream', async (c) => {
     return c.json({ error: 'Invalid request', details: parsed.error.flatten() }, 400)
   }
 
-  const { result, model } = createAgentRun(parsed.data)
+  const { sessionId, accessor } = createAgentSession()
+  const { result, model } = createAgentRun(parsed.data, { state: accessor })
 
   return streamSSE(c, async (stream) => {
     try {
       await stream.writeSSE({
         event: 'meta',
-        data: JSON.stringify({ model }),
+        data: JSON.stringify({ model, sessionId }),
       })
-
-      let content = ''
-      for await (const delta of result.getTextStream()) {
-        content += delta
-        await stream.writeSSE({
-          event: 'text',
-          data: JSON.stringify({ delta }),
-        })
-      }
-
-      const response = await result.getResponse()
+      await streamAgentResult(result, stream, sessionId)
+    } catch (error) {
+      const mapped = mapAgentError(error)
       await stream.writeSSE({
-        event: 'done',
-        data: JSON.stringify({
-          message: {
-            role: 'assistant',
-            content,
-          },
-          model,
-          usage: response.usage,
-        }),
+        event: 'error',
+        data: JSON.stringify({ error: mapped.message }),
       })
+    }
+  })
+})
+
+agentRoutes.post('/chat/continue', async (c) => {
+  if (!config.isConfigured) return missingKeyResponse(c)
+
+  const parsed = continueRequestSchema.safeParse(await c.req.json())
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid request', details: parsed.error.flatten() }, 400)
+  }
+
+  const accessor = getAgentSessionAccessor(parsed.data.sessionId)
+  if (!accessor) {
+    return c.json({ error: 'Session not found or expired' }, 404)
+  }
+
+  const { result, model } = createAgentContinueRun(parsed.data, { state: accessor })
+
+  return streamSSE(c, async (stream) => {
+    try {
+      await stream.writeSSE({
+        event: 'meta',
+        data: JSON.stringify({ model, sessionId: parsed.data.sessionId }),
+      })
+      await streamAgentResult(result, stream, parsed.data.sessionId)
     } catch (error) {
       const mapped = mapAgentError(error)
       await stream.writeSSE({
