@@ -1,16 +1,19 @@
 import { useRef } from 'react'
-import { Download, Hand, Maximize, Minus, Plus, Share2 } from 'lucide-react'
+import { Hand, Maximize, Minus, Plus, Share2 } from 'lucide-react'
+import { ExportDropdown } from './ExportDropdown'
 import { usePreviewViewport } from '../../hooks/usePreviewViewport'
 import { MermaidRender } from '../MermaidRender'
 import './Preview.css'
 
 interface PreviewProps {
-  code: string
+  previewCode: string
+  exportCode: string
+  filename: string
   zoom: number
   onZoomChange: (zoom: number) => void
 }
 
-export function Preview({ code, zoom, onZoomChange }: PreviewProps) {
+export function Preview({ previewCode, exportCode, filename, zoom, onZoomChange }: PreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
 
   const { pan, isDragging, scale, onPointerDown, onPointerMove, onPointerUp, onWheel, resetView } =
@@ -46,9 +49,7 @@ export function Preview({ code, zoom, onZoomChange }: PreviewProps) {
             <Share2 size={14} />
           </button>
           <div className="divider" />
-          <button type="button" className="download-btn">
-            <Download size={14} className="icon-muted" /> Download SVG
-          </button>
+          <ExportDropdown code={exportCode} filename={filename} variant="toolbar" />
         </div>
       </div>
 
@@ -68,7 +69,7 @@ export function Preview({ code, zoom, onZoomChange }: PreviewProps) {
           }}
         >
           <div className="mermaid-wrapper">
-            <MermaidRender code={code} />
+            <MermaidRender code={previewCode} />
           </div>
         </div>
       </div>

@@ -54,24 +54,6 @@
   background-color: #f8fafc;
 }
 
-.download-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: white;
-  border: 1px solid #e2e8f0;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #0f172a;
-  cursor: pointer;
-}
-
-.download-btn:hover {
-  background-color: #f8fafc;
-}
-
 .preview-content-container {
   flex: 1;
   background-image: radial-gradient(#e2e8f0 1px, transparent 1px);

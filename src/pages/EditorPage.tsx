@@ -31,6 +31,7 @@ function EditorSession() {
       <TopBar
         title={title}
         subtitle="Colorful process or dependency graph."
+        code={code}
         onRender={renderNow}
       />
       <div className="workspace">
@@ -42,7 +43,13 @@ function EditorSession() {
           onFormat={() => setCode(code.trim())}
           onCopy={() => void navigator.clipboard.writeText(code)}
         />
-        <Preview code={previewCode} zoom={zoom} onZoomChange={setZoom} />
+        <Preview
+          previewCode={previewCode}
+          exportCode={code}
+          filename={title}
+          zoom={zoom}
+          onZoomChange={setZoom}
+        />
       </div>
     </AppLayout>
   )
