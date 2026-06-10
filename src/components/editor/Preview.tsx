@@ -16,10 +16,38 @@ interface PreviewProps {
 export function Preview({ previewCode, exportCode, filename, zoom, onZoomChange }: PreviewProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const fitOnNextRenderRef = useRef(true)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
-  const { pan, isDragging, scale, onPointerDown, onPointerMove, onPointerUp, onWheel, resetView } =
-    usePreviewViewport(zoom, onZoomChange)
+  const {
+    pan,
+    isDragging,
+    scale,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    onWheel,
+    fitToView,
+  } = usePreviewViewport(zoom, onZoomChange)
+
+  const scheduleFitToView = useCallback(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        fitToView(containerRef.current, wrapperRef.current)
+      })
+    })
+  }, [fitToView])
+
+  const handleRendered = useCallback(() => {
+    if (!fitOnNextRenderRef.current) return
+    fitOnNextRenderRef.current = false
+    scheduleFitToView()
+  }, [scheduleFitToView])
+
+  const handleResetView = useCallback(() => {
+    scheduleFitToView()
+  }, [scheduleFitToView])
 
   useEffect(() => {
     const onFullscreenChange = () => {
@@ -61,7 +89,7 @@ export function Preview({ previewCode, exportCode, filename, zoom, onZoomChange 
             </button>
           </div>
           <div className="divider" />
-          <button type="button" className="btn-toolbar-icon" onClick={resetView} title="Reset view">
+          <button type="button" className="btn-toolbar-icon" onClick={handleResetView} title="Reset view">
             <RotateCcw size={14} />
           </button>
           <button
@@ -95,8 +123,8 @@ export function Preview({ previewCode, exportCode, filename, zoom, onZoomChange 
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`,
           }}
         >
-          <div className="mermaid-wrapper">
-            <MermaidRender code={previewCode} />
+          <div ref={wrapperRef} className="mermaid-wrapper">
+            <MermaidRender code={previewCode} onRendered={handleRendered} />
           </div>
         </div>
       </div>

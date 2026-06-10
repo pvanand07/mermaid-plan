@@ -1,17 +1,12 @@
 import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from 'react'
+import { computeFitView, MAX_ZOOM, MIN_ZOOM, type Pan } from '../lib/previewFit'
+
+export type { Pan }
 
 const INTERACTIVE_NODE_SELECTOR = 'g.node, g.actor, g.task'
 
 function isInteractiveNodeTarget(target: EventTarget | null): boolean {
   return target instanceof Element && Boolean(target.closest(INTERACTIVE_NODE_SELECTOR))
-}
-
-const MIN_ZOOM = 25
-const MAX_ZOOM = 200
-
-export interface Pan {
-  x: number
-  y: number
 }
 
 export function usePreviewViewport(
@@ -86,10 +81,33 @@ export function usePreviewViewport(
     [clampZoom, onZoomChange, zoom],
   )
 
-  const resetView = useCallback(() => {
-    setPan({ x: 0, y: 0 })
-    onZoomChange(100)
-  }, [onZoomChange])
+  const fitToView = useCallback(
+    (container: HTMLElement | null, wrapper: HTMLElement | null) => {
+      if (!container || !wrapper) return
+
+      const contentWidth = wrapper.offsetWidth
+      const contentHeight = wrapper.offsetHeight
+      if (contentWidth === 0 || contentHeight === 0) return
+
+      const { zoom: fitZoom, pan: fitPan } = computeFitView(
+        container.clientWidth,
+        container.clientHeight,
+        contentWidth,
+        contentHeight,
+      )
+
+      setPan(fitPan)
+      onZoomChange(fitZoom)
+    },
+    [onZoomChange],
+  )
+
+  const resetView = useCallback(
+    (container: HTMLElement | null, wrapper: HTMLElement | null) => {
+      fitToView(container, wrapper)
+    },
+    [fitToView],
+  )
 
   return {
     pan,
@@ -99,6 +117,7 @@ export function usePreviewViewport(
     onPointerMove,
     onPointerUp,
     onWheel,
+    fitToView,
     resetView,
   }
 }

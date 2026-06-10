@@ -25,10 +25,12 @@ export function MermaidRender({
   code,
   className = '',
   scale = 1,
+  onRendered,
 }: {
   code: string
   className?: string
   scale?: number
+  onRendered?: () => void
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
@@ -61,6 +63,8 @@ export function MermaidRender({
             svgElement.setAttribute('role', 'img')
             svgElement.style.maxWidth = 'none'
           }
+
+          onRendered?.()
         }
       } catch (e) {
         if (!cancelled) {
@@ -73,7 +77,7 @@ export function MermaidRender({
     return () => {
       cancelled = true
     }
-  }, [code, baseId])
+  }, [code, baseId, onRendered])
 
   if (error) {
     return (
