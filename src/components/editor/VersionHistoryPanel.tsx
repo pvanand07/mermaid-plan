@@ -84,6 +84,10 @@ export function VersionHistoryPanel({ versions, onRestore }: VersionHistoryPanel
                         </div>
                       </div>
 
+                      {version.commitMessage && (
+                        <p className="version-history-commit-message">{version.commitMessage}</p>
+                      )}
+
                       {diff.titleChanged && (
                         <p className="version-history-title-change">Title updated</p>
                       )}

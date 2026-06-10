@@ -10,6 +10,7 @@ export type EditorPanelMode = 'code' | 'note'
 export type NoteView = 'edit' | 'preview'
 
 interface CodeEditorProps {
+  diagramId?: string
   code: string
   setCode: (code: string) => void
   onFormat: () => void
@@ -18,9 +19,11 @@ interface CodeEditorProps {
   onPanelModeChange: (mode: EditorPanelMode) => void
   noteMd: string
   setNoteMd: (value: string) => void
+  onAgentDiagramSave?: (code: string, commitMessage?: string) => Promise<void>
 }
 
 export function CodeEditor({
+  diagramId,
   code,
   setCode,
   onFormat,
@@ -29,6 +32,7 @@ export function CodeEditor({
   onPanelModeChange,
   noteMd,
   setNoteMd,
+  onAgentDiagramSave,
 }: CodeEditorProps) {
   const [aiOpen, setAiOpen] = useState(false)
   const [noteView, setNoteView] = useState<NoteView>('edit')
@@ -62,8 +66,10 @@ export function CodeEditor({
     <div className="code-editor-panel panel">
       <AiPanel
         open={aiOpen}
+        diagramId={diagramId}
         diagramCode={code}
         onDiagramUpdate={updateCode}
+        onAgentDiagramSave={onAgentDiagramSave}
         onMinimize={() => setAiOpen(false)}
       />
       <div className="panel-header">

@@ -73,8 +73,9 @@ export async function updateDiagram(
 }
 
 export async function deleteDiagram(id: string): Promise<void> {
-  await db.transaction('rw', db.diagrams, db.diagramVersions, async () => {
+  await db.transaction('rw', db.diagrams, db.diagramVersions, db.conversations, async () => {
     await db.diagramVersions.where('diagramId').equals(id).delete()
+    await db.conversations.delete(id)
     await db.diagrams.delete(id)
   })
 }

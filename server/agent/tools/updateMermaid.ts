@@ -3,7 +3,10 @@ import { z } from 'zod'
 
 export const updateMermaidInputSchema = z.object({
   code: z.string().describe('Complete Mermaid diagram source (no ```mermaid fences)'),
-  summary: z.string().optional().describe('Brief note of what changed'),
+  commitMessage: z
+    .string()
+    .optional()
+    .describe('Brief commit message describing what changed'),
 })
 
 export const updateMermaidOutputSchema = z.object({

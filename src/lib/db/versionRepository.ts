@@ -28,13 +28,17 @@ async function pruneOldSnapshots(diagramId: string): Promise<void> {
   await db.diagramVersions.bulkDelete(toDelete.map((v) => v.id))
 }
 
-export async function createVersionSnapshot(diagram: DiagramRecord): Promise<DiagramVersionRecord> {
+export async function createVersionSnapshot(
+  diagram: DiagramRecord,
+  commitMessage?: string,
+): Promise<DiagramVersionRecord> {
   const record: DiagramVersionRecord = {
     id: crypto.randomUUID(),
     diagramId: diagram.id,
     mermaidCode: diagram.mermaidCode,
     noteMd: diagram.noteMd,
     title: diagram.title,
+    commitMessage: commitMessage?.trim() || undefined,
     createdAt: new Date().toISOString(),
   }
 

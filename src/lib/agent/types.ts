@@ -17,7 +17,7 @@ export interface UpdateMermaidToolCall {
   name: 'update_mermaid'
   arguments: {
     code: string
-    summary?: string
+    commitMessage?: string
   }
 }
 

@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
-import { Bot, CheckCircle2, Loader2, Minus, Send, Sparkles, Wrench } from 'lucide-react'
+import { Bot, CheckCircle2, Loader2, Minus, RotateCcw, Send, Sparkles, Wrench } from 'lucide-react'
 import {
   AgentChatError,
   continueAgentChat,
   streamAgentChat,
 } from '../../lib/agent/streamChat'
 import type { AgentChatMessage, MermaidToolResult } from '../../lib/agent/types'
+import {
+  clearConversation,
+  getConversation,
+  saveConversation,
+} from '../../lib/db/conversationRepository'
+import type { StoredChatMessage } from '../../data/types'
 import {
   formatValidationMessage,
   validateMermaidDiagram,
@@ -17,7 +23,7 @@ import './AiPanel.css'
 type MessageRole = 'assistant' | 'user'
 
 interface ToolStatus {
-  summary?: string
+  commitMessage?: string
   result: MermaidToolResult
 }
 
@@ -46,9 +52,32 @@ const SUGGESTED_PROMPTS = [
 
 interface AiPanelProps {
   open: boolean
+  diagramId?: string
   diagramCode: string
   onDiagramUpdate: (code: string) => void
+  onAgentDiagramSave?: (code: string, commitMessage?: string) => Promise<void>
   onMinimize: () => void
+}
+
+function toStoredMessages(messages: ChatMessage[]): StoredChatMessage[] {
+  return messages
+    .filter((message) => message.id !== 'welcome' && !message.streaming)
+    .map(({ id, role, content, error, toolStatus }) => ({
+      id,
+      role,
+      content,
+      error,
+      toolStatus,
+    }))
+}
+
+function syncMessageIdRef(messages: ChatMessage[], ref: { current: number }) {
+  let max = 0
+  for (const message of messages) {
+    const match = message.id.match(/^(?:user|assistant)-(\d+)$/)
+    if (match) max = Math.max(max, Number(match[1]))
+  }
+  ref.current = max
 }
 
 function toAgentMessages(messages: ChatMessage[]): AgentChatMessage[] {
@@ -57,7 +86,14 @@ function toAgentMessages(messages: ChatMessage[]): AgentChatMessage[] {
     .map(({ role, content }) => ({ role, content }))
 }
 
-export function AiPanel({ open, diagramCode, onDiagramUpdate, onMinimize }: AiPanelProps) {
+export function AiPanel({
+  open,
+  diagramId,
+  diagramCode,
+  onDiagramUpdate,
+  onAgentDiagramSave,
+  onMinimize,
+}: AiPanelProps) {
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE])
   const [isStreaming, setIsStreaming] = useState(false)
@@ -65,6 +101,7 @@ export function AiPanel({ open, diagramCode, onDiagramUpdate, onMinimize }: AiPa
   const abortRef = useRef<AbortController | null>(null)
   const diagramCodeRef = useRef(diagramCode)
   const messageIdRef = useRef(0)
+  const skipSaveRef = useRef(true)
 
   const createMessageId = (prefix: string) => {
     messageIdRef.current += 1
@@ -74,6 +111,49 @@ export function AiPanel({ open, diagramCode, onDiagramUpdate, onMinimize }: AiPa
   useEffect(() => {
     diagramCodeRef.current = diagramCode
   }, [diagramCode])
+
+  useEffect(() => {
+    skipSaveRef.current = true
+    let cancelled = false
+
+    if (!diagramId) {
+      setMessages([WELCOME_MESSAGE])
+      messageIdRef.current = 0
+      skipSaveRef.current = false
+      return
+    }
+
+    void getConversation(diagramId).then((record) => {
+      if (cancelled) return
+
+      if (record?.messages.length) {
+        setMessages(record.messages)
+        syncMessageIdRef(record.messages, messageIdRef)
+      } else {
+        setMessages([WELCOME_MESSAGE])
+        messageIdRef.current = 0
+      }
+
+      skipSaveRef.current = false
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [diagramId])
+
+  useEffect(() => {
+    if (!diagramId || skipSaveRef.current || isStreaming) return
+
+    const stored = toStoredMessages(messages)
+    if (stored.length === 0) return
+
+    const timer = setTimeout(() => {
+      void saveConversation(diagramId, stored)
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [diagramId, isStreaming, messages])
 
   useEffect(() => {
     return () => {
@@ -141,21 +221,25 @@ export function AiPanel({ open, diagramCode, onDiagramUpdate, onMinimize }: AiPa
     pause: {
       sessionId: string
       toolCallId: string
-      toolCall: { arguments: { code: string; summary?: string } }
+      toolCall: { arguments: { code: string; commitMessage?: string } }
     },
     assistantId: string,
     controller: AbortController,
   ) => {
-    const { code, summary } = pause.toolCall.arguments
+    const { code, commitMessage } = pause.toolCall.arguments
     onDiagramUpdate(code)
     diagramCodeRef.current = code
 
     const validation = await validateMermaidDiagram(code)
 
+    if (validation.ok && onAgentDiagramSave) {
+      await onAgentDiagramSave(code, commitMessage)
+    }
+
     updateAssistantMessage(assistantId, (message) => ({
       ...message,
       toolStatus: {
-        summary,
+        commitMessage,
         result: validation,
       },
     }))
@@ -258,7 +342,25 @@ export function AiPanel({ open, diagramCode, onDiagramUpdate, onMinimize }: AiPa
     }
   }
 
-  const showSuggestions = messages.length === 1 && !isStreaming
+  const handleReset = async () => {
+    if (isStreaming) return
+
+    abortRef.current?.abort()
+    abortRef.current = null
+    skipSaveRef.current = true
+    setMessages([WELCOME_MESSAGE])
+    messageIdRef.current = 0
+    setInput('')
+    setIsStreaming(false)
+
+    if (diagramId) {
+      await clearConversation(diagramId)
+    }
+
+    skipSaveRef.current = false
+  }
+
+  const showSuggestions = messages.length === 1 && messages[0]?.id === 'welcome' && !isStreaming
 
   return (
     <div className="ai-panel-overlay panel" role="dialog" aria-label="AI assistant">
@@ -267,15 +369,27 @@ export function AiPanel({ open, diagramCode, onDiagramUpdate, onMinimize }: AiPa
           <Sparkles size={16} className="ai-panel-title-icon" />
           <span>AI Assistant</span>
         </div>
-        <button
-          type="button"
-          className="icon-btn"
-          onClick={onMinimize}
-          aria-label="Minimize AI assistant"
-          title="Minimize"
-        >
-          <Minus size={16} />
-        </button>
+        <div className="ai-panel-header-actions">
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={() => void handleReset()}
+            disabled={isStreaming || (messages.length === 1 && messages[0]?.id === 'welcome')}
+            aria-label="Reset conversation"
+            title="Reset conversation"
+          >
+            <RotateCcw size={16} />
+          </button>
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={onMinimize}
+            aria-label="Minimize AI assistant"
+            title="Minimize"
+          >
+            <Minus size={16} />
+          </button>
+        </div>
       </div>
 
       <div className="ai-panel-messages">
@@ -313,8 +427,10 @@ export function AiPanel({ open, diagramCode, onDiagramUpdate, onMinimize }: AiPa
                         <Wrench size={14} />
                       )}
                       <div className="ai-tool-status-text">
-                        {message.toolStatus.summary && (
-                          <span className="ai-tool-status-summary">{message.toolStatus.summary}</span>
+                        {message.toolStatus.commitMessage && (
+                          <span className="ai-tool-status-summary">
+                            {message.toolStatus.commitMessage}
+                          </span>
                         )}
                         <span>{formatValidationMessage(message.toolStatus.result)}</span>
                       </div>

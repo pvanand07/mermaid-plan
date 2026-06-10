@@ -196,9 +196,56 @@ export function useDiagramEditor({
     [diagramId],
   )
 
+  const applyAgentDiagramUpdate = useCallback(
+    async (nextCode: string, commitMessage?: string) => {
+      setCode(nextCode)
+
+      if (isSavingRef.current) return
+
+      isSavingRef.current = true
+      setSaveStatus('saving')
+
+      try {
+        let record: DiagramRecord
+
+        if (!diagramId) {
+          record = await createDiagram({
+            title,
+            mermaidCode: nextCode,
+            noteMd: noteMd || undefined,
+            folderPath,
+          })
+          setDiagramId(record.id)
+          navigate(`/editor/${record.id}`, { replace: true })
+        } else {
+          record = await updateDiagram(diagramId, {
+            mermaidCode: nextCode,
+          })
+        }
+
+        if (storageConfig.versioning.enabled) {
+          lastSnapshotAtRef.current = Date.now()
+          await createVersionSnapshot(record, commitMessage)
+        }
+
+        lastSavedRef.current = {
+          ...lastSavedRef.current,
+          code: nextCode,
+        }
+        setSaveStatus('saved')
+      } catch {
+        setSaveStatus('error')
+      } finally {
+        isSavingRef.current = false
+      }
+    },
+    [diagramId, folderPath, navigate, noteMd, title],
+  )
+
   const subtitle = noteExcerpt(noteMd) ?? undefined
 
   return {
+    diagramId,
     title,
     setTitle,
     code,
@@ -213,5 +260,6 @@ export function useDiagramEditor({
     dbError,
     loaded,
     restoreVersion: handleRestoreVersion,
+    applyAgentDiagramUpdate,
   }
 }

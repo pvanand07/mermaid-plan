@@ -52,6 +52,7 @@ export interface DiagramVersionRecord {
   mermaidCode: string
   noteMd?: string
   title: string
+  commitMessage?: string
   createdAt: string
 }
 
@@ -69,4 +70,26 @@ export interface UpdateDiagramPatch {
   noteMd?: string | null
   folderPath?: string
   starred?: boolean
+}
+
+export interface StoredChatMessage {
+  id: string
+  role: 'assistant' | 'user'
+  content: string
+  error?: boolean
+  toolStatus?: {
+    commitMessage?: string
+    result: {
+      ok: boolean
+      error?: string
+      phase?: 'parse' | 'render'
+      diagramType?: string
+    }
+  }
+}
+
+export interface ConversationRecord {
+  diagramId: string
+  messages: StoredChatMessage[]
+  updatedAt: string
 }

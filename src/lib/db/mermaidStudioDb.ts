@@ -1,6 +1,11 @@
 import Dexie, { type Table } from 'dexie'
 import { diagrams as seedDiagrams, folders as seedFolders } from '../../data/diagrams'
-import type { DiagramRecord, DiagramVersionRecord, FolderRecord } from '../../data/types'
+import type {
+  ConversationRecord,
+  DiagramRecord,
+  DiagramVersionRecord,
+  FolderRecord,
+} from '../../data/types'
 import { detectDiagramType } from '../diagram/detectDiagramType'
 import { normalizeFolderPath } from '../folders/pathUtils'
 import { storageConfig } from '../../config/storage'
@@ -15,6 +20,7 @@ export class MermaidStudioDB extends Dexie {
   diagrams!: Table<DiagramRecord, string>
   folders!: Table<FolderRecord, string>
   diagramVersions!: Table<DiagramVersionRecord, string>
+  conversations!: Table<ConversationRecord, string>
 
   constructor() {
     super(storageConfig.dbName)
@@ -22,6 +28,13 @@ export class MermaidStudioDB extends Dexie {
       diagrams: 'id, folderPath, updatedAt, starred, title',
       folders: 'path, createdAt',
       diagramVersions: 'id, diagramId, createdAt',
+    })
+
+    this.version(2).stores({
+      diagrams: 'id, folderPath, updatedAt, starred, title',
+      folders: 'path, createdAt',
+      diagramVersions: 'id, diagramId, createdAt',
+      conversations: 'diagramId, updatedAt',
     })
 
     this.on('populate', async () => {

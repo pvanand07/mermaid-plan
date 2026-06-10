@@ -1696,6 +1696,13 @@
   color: var(--gemini-text-muted);
 }
 
+.version-history-commit-message {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gemini-text);
+}
+
 .version-diff-preview {
   margin: 0 0 10px;
   padding: 8px;

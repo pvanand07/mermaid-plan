@@ -88,6 +88,7 @@ function EditorSession() {
       />
       <div className="workspace">
         <CodeEditor
+          diagramId={editor.diagramId}
           code={editor.code}
           setCode={editor.setCode}
           onFormat={() => editor.setCode(editor.code.trim())}
@@ -96,6 +97,7 @@ function EditorSession() {
           onPanelModeChange={setPanelMode}
           noteMd={editor.noteMd}
           setNoteMd={editor.setNoteMd}
+          onAgentDiagramSave={editor.applyAgentDiagramUpdate}
         />
         <Preview
           previewCode={previewCode}

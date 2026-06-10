@@ -31,7 +31,7 @@ export interface AgentToolCallPayload {
   name: string
   arguments: {
     code: string
-    summary?: string
+    commitMessage?: string
   }
 }
 
