@@ -24,14 +24,19 @@
 .zoom-controls {
   display: flex;
   align-items: center;
+  height: var(--panel-toolbar-height);
+  box-sizing: border-box;
   background-color: #ffffff;
   border-radius: 6px;
-  padding: 4px;
+  padding: var(--panel-toolbar-pill-inset);
   border: 1px solid #e2e8f0;
 }
 
 .zoom-controls .icon-btn {
-  padding: 2px 4px;
+  height: calc(var(--panel-toolbar-height) - var(--panel-toolbar-pill-inset) * 2);
+  min-height: 0;
+  padding: 0 6px;
+  box-sizing: border-box;
   color: #475569;
 }
 
@@ -47,9 +52,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  width: var(--panel-toolbar-height);
+  height: var(--panel-toolbar-height);
+  box-sizing: border-box;
   background: white;
   border: 1px solid #e2e8f0;
-  padding: 6px;
+  padding: 0;
   border-radius: 6px;
   color: #475569;
   cursor: pointer;

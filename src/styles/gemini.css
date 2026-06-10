@@ -1186,6 +1186,8 @@
   border-bottom: 1px solid var(--gemini-border);
   padding: 0 16px;
   height: 52px;
+  --panel-toolbar-height: 28px;
+  --panel-toolbar-pill-inset: 2px;
 }
 
 .panel-footer {
@@ -1336,44 +1338,12 @@
 
 /* Diagram storage & editor extensions */
 
-.workspace--with-mode-tabs .workspace-left {
+.note-editor-embedded {
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-width: 0;
   min-height: 0;
-  gap: 0;
-}
-
-.workspace--with-mode-tabs .code-editor-panel,
-.workspace--with-mode-tabs .note-editor {
-  flex: 1;
-  min-height: 0;
-}
-
-.editor-mode-tabs {
-  display: flex;
-  gap: 4px;
-  padding: 8px 8px 0;
-  background: var(--gemini-bg);
-}
-
-.editor-mode-tab {
-  padding: 8px 16px;
-  border: 1px solid var(--gemini-border);
-  border-bottom: none;
-  border-radius: var(--gemini-radius-sm) var(--gemini-radius-sm) 0 0;
-  background: var(--gemini-surface-subtle);
-  color: var(--gemini-text-muted);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.editor-mode-tab.active {
-  background: white;
-  color: var(--gemini-text);
-  border-color: var(--gemini-border);
+  overflow: hidden;
 }
 
 .note-editor {

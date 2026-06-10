@@ -17,7 +17,6 @@ import { VersionHistoryPanel } from './VersionHistoryPanel'
 
 interface TopBarProps {
   title: string
-  subtitle?: string
   code: string
   saveStatus: SaveStatus
   mermaidRevision: number
@@ -33,7 +32,6 @@ interface TopBarProps {
 
 export function TopBar({
   title,
-  subtitle,
   code,
   saveStatus,
   mermaidRevision,
@@ -131,7 +129,6 @@ export function TopBar({
               )}
             </div>
           </div>
-          {subtitle && <span className="subtitle">{subtitle}</span>}
         </div>
       </div>
 

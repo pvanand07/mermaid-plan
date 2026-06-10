@@ -12,12 +12,45 @@
   font-weight: 600;
   color: #64748b;
   cursor: pointer;
+  background: none;
+  border: none;
   border-bottom: 2px solid transparent;
 }
 
 .tab.active {
   color: #0f172a;
   border-bottom-color: #6366f1;
+}
+
+.note-view-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: var(--panel-toolbar-height);
+  box-sizing: border-box;
+  background-color: #ffffff;
+  border-radius: 6px;
+  padding: var(--panel-toolbar-pill-inset);
+  border: 1px solid #e2e8f0;
+}
+
+.note-view-controls .icon-btn {
+  height: calc(var(--panel-toolbar-height) - var(--panel-toolbar-pill-inset) * 2);
+  min-height: 0;
+  min-width: 36px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  border-radius: 4px;
+  color: #475569;
+}
+
+.note-view-controls .icon-btn:hover:not(.active) {
+  background-color: #f8fafc;
+}
+
+.note-view-controls .icon-btn.active {
+  background-color: #6366f1;
+  color: #ffffff;
 }
 
 .toolbar {
@@ -32,11 +65,13 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  height: var(--panel-toolbar-height);
+  box-sizing: border-box;
   font-size: 12px;
   font-weight: 500;
   color: #0f172a;
   cursor: pointer;
-  padding: 6px 10px;
+  padding: 0 10px;
   border-radius: 6px;
 }
 

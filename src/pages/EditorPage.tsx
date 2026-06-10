@@ -2,15 +2,13 @@ import { useState } from 'react'
 import { useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { AppLayout } from '../components/AppLayout'
 import { CodeEditor } from '../components/editor/CodeEditor'
-import { EditorModeTabs, type EditorMode } from '../components/editor/EditorModeTabs'
-import { NoteEditor } from '../components/editor/NoteEditor'
+import type { EditorPanelMode } from '../components/editor/CodeEditor'
 import { Preview } from '../components/editor/Preview'
 import { TopBar } from '../components/editor/TopBar'
 import { defaultEditorCode } from '../data'
 import { useDiagramStore } from '../context/DiagramStoreContext'
 import { useDebouncedPreview } from '../hooks/useDebouncedPreview'
 import { useDiagramEditor } from '../hooks/useDiagramEditor'
-import { detectDiagramType } from '../lib/diagram/detectDiagramType'
 import { normalizeFolderPath } from '../lib/folders/pathUtils'
 
 function editorSessionKey(id: string | undefined, state: unknown, folderPath: string): string {
@@ -48,13 +46,10 @@ function EditorSession() {
     templateNote,
   })
 
-  const [editorMode, setEditorMode] = useState<EditorMode>('diagram')
+  const [panelMode, setPanelMode] = useState<EditorPanelMode>('code')
   const [autoRender, setAutoRender] = useState(true)
   const [zoom, setZoom] = useState(100)
   const { previewCode, renderNow } = useDebouncedPreview(editor.code, autoRender)
-
-  const typeLabel = detectDiagramType(editor.code)
-  const subtitle = editor.subtitle ?? typeLabel
 
   if (loading || !editor.loaded) {
     return (
@@ -73,7 +68,6 @@ function EditorSession() {
       )}
       <TopBar
         title={editor.title}
-        subtitle={subtitle}
         code={editor.code}
         saveStatus={editor.saveStatus}
         mermaidRevision={editor.mermaidRevision}
@@ -86,22 +80,19 @@ function EditorSession() {
         onRender={renderNow}
         onRestoreVersion={editor.restoreVersion}
       />
-      <div className="workspace workspace--with-mode-tabs">
-        <div className="workspace-left">
-          <EditorModeTabs mode={editorMode} onModeChange={setEditorMode} />
-          {editorMode === 'diagram' ? (
-            <CodeEditor
-              code={editor.code}
-              setCode={editor.setCode}
-              autoRender={autoRender}
-              setAutoRender={setAutoRender}
-              onFormat={() => editor.setCode(editor.code.trim())}
-              onCopy={() => void navigator.clipboard.writeText(editor.code)}
-            />
-          ) : (
-            <NoteEditor noteMd={editor.noteMd} setNoteMd={editor.setNoteMd} />
-          )}
-        </div>
+      <div className="workspace">
+        <CodeEditor
+          code={editor.code}
+          setCode={editor.setCode}
+          autoRender={autoRender}
+          setAutoRender={setAutoRender}
+          onFormat={() => editor.setCode(editor.code.trim())}
+          onCopy={() => void navigator.clipboard.writeText(editor.code)}
+          panelMode={panelMode}
+          onPanelModeChange={setPanelMode}
+          noteMd={editor.noteMd}
+          setNoteMd={editor.setNoteMd}
+        />
         <Preview
           previewCode={previewCode}
           exportCode={editor.code}
