@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react'
 import mermaid from 'mermaid'
-import { AlignLeft, CheckCircle2, Copy, Eye, Pencil } from 'lucide-react'
+import { AlignLeft, CheckCircle2, Copy, Eye, Pencil, Sparkles } from 'lucide-react'
 import { cn } from '../../lib/cn'
+import { AiPanel } from './AiPanel'
 import { NoteEditor } from './NoteEditor'
 import './CodeEditor.css'
 
@@ -29,6 +30,7 @@ export function CodeEditor({
   noteMd,
   setNoteMd,
 }: CodeEditorProps) {
+  const [aiOpen, setAiOpen] = useState(false)
   const [noteView, setNoteView] = useState<NoteView>('edit')
   const [validateMessage, setValidateMessage] = useState<string | null>(null)
   const [validateOk, setValidateOk] = useState(true)
@@ -57,8 +59,20 @@ export function CodeEditor({
 
   return (
     <div className="code-editor-panel panel">
+      <AiPanel open={aiOpen} onMinimize={() => setAiOpen(false)} />
       <div className="panel-header">
-        <div className="tabs">
+        <div className="panel-header-left">
+          <button
+            type="button"
+            className={cn('ai-toggle-btn', aiOpen && 'active')}
+            onClick={() => setAiOpen((open) => !open)}
+            aria-label={aiOpen ? 'Minimize AI assistant' : 'Open AI assistant'}
+            aria-pressed={aiOpen}
+            title="AI Assistant"
+          >
+            <Sparkles size={14} />
+          </button>
+          <div className="tabs">
           <button
             type="button"
             className={cn('tab', panelMode === 'code' && 'active')}
@@ -73,6 +87,7 @@ export function CodeEditor({
           >
             Note
           </button>
+          </div>
         </div>
         {panelMode === 'note' && (
           <div className="note-view-controls">
