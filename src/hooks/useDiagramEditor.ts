@@ -47,7 +47,6 @@ export function useDiagramEditor({
   const lastSnapshotAtRef = useRef<number | null>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isSavingRef = useRef(false)
-  const skipAutosaveRef = useRef(false)
 
   const versions = useLiveQuery(
     () => (diagramId ? listVersions(diagramId) : []),
@@ -151,17 +150,6 @@ export function useDiagramEditor({
 
   useEffect(() => {
     if (!loaded) return
-
-    if (skipAutosaveRef.current) {
-      skipAutosaveRef.current = false
-      if (saveTimerRef.current) {
-        clearTimeout(saveTimerRef.current)
-        saveTimerRef.current = null
-      }
-      if (saveStatus !== 'saving') setSaveStatus('dirty')
-      return
-    }
-
     const dirty =
       title !== lastSavedRef.current.title ||
       code !== lastSavedRef.current.code ||
@@ -302,7 +290,6 @@ export function useDiagramEditor({
 
   const applyTemplate = useCallback(
     (template: Template) => {
-      skipAutosaveRef.current = true
       setCode(template.mermaidCode)
       const isDefaultTitle = title === 'Untitled' || title === 'FlowChart'
       if (isDefaultTitle) setTitle(template.name)
