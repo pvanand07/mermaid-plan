@@ -59,7 +59,11 @@ export function CodeEditor({
 
   return (
     <div className="code-editor-panel panel">
-      <AiPanel open={aiOpen} onMinimize={() => setAiOpen(false)} />
+      <AiPanel
+        open={aiOpen}
+        diagramCode={code}
+        onMinimize={() => setAiOpen(false)}
+      />
       <div className="panel-header">
         <div className="panel-header-left">
           <button

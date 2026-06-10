@@ -185,3 +185,87 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+.ai-panel-send-spinner {
+  animation: ai-spin 0.8s linear infinite;
+}
+
+@keyframes ai-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ai-message-bubble--error {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+.ai-message-bubble--streaming {
+  min-width: 72px;
+}
+
+.ai-message-thinking {
+  color: var(--gemini-text-muted);
+  font-style: italic;
+}
+
+.ai-message-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--gemini-primary);
+  animation: ai-cursor-blink 1s step-end infinite;
+}
+
+@keyframes ai-cursor-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.ai-message-markdown {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.ai-message-markdown p {
+  margin: 0 0 0.75em;
+}
+
+.ai-message-markdown p:last-child {
+  margin-bottom: 0;
+}
+
+.ai-message-markdown pre {
+  margin: 0.5em 0;
+  padding: 10px 12px;
+  overflow-x: auto;
+  border-radius: var(--gemini-radius-sm);
+  background: #f1f5f9;
+  border: 1px solid var(--gemini-border);
+}
+
+.ai-message-markdown code {
+  font-family: 'Fira Code', monospace;
+  font-size: 12px;
+}
+
+.ai-message-markdown :not(pre) > code {
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: #f1f5f9;
+}
+
+.ai-panel-input:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.ai-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
