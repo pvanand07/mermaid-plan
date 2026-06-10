@@ -1,5 +1,5 @@
-import { useRef } from 'react'
-import { Hand, Maximize, Minus, Plus, Share2 } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Hand, Maximize, Minimize2, Minus, Plus, RotateCcw, Share2 } from 'lucide-react'
 import { ExportDropdown } from './ExportDropdown'
 import { usePreviewViewport } from '../../hooks/usePreviewViewport'
 import { MermaidRender } from '../MermaidRender'
@@ -14,13 +14,32 @@ interface PreviewProps {
 }
 
 export function Preview({ previewCode, exportCode, filename, zoom, onZoomChange }: PreviewProps) {
+  const panelRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
   const { pan, isDragging, scale, onPointerDown, onPointerMove, onPointerUp, onWheel, resetView } =
     usePreviewViewport(zoom, onZoomChange)
 
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      setIsFullscreen(document.fullscreenElement === panelRef.current)
+    }
+    document.addEventListener('fullscreenchange', onFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
+  }, [])
+
+  const toggleFullscreen = useCallback(async () => {
+    if (!panelRef.current) return
+    if (document.fullscreenElement === panelRef.current) {
+      await document.exitFullscreen()
+    } else {
+      await panelRef.current.requestFullscreen()
+    }
+  }, [])
+
   return (
-    <div className="preview-panel panel">
+    <div ref={panelRef} className={`preview-panel panel${isFullscreen ? ' is-fullscreen' : ''}`}>
       <div className="panel-header">
         <div className="preview-title">Preview</div>
         <div className="preview-toolbar">
@@ -43,7 +62,15 @@ export function Preview({ previewCode, exportCode, filename, zoom, onZoomChange 
           </div>
           <div className="divider" />
           <button type="button" className="btn-toolbar-icon" onClick={resetView} title="Reset view">
-            <Maximize size={14} />
+            <RotateCcw size={14} />
+          </button>
+          <button
+            type="button"
+            className="btn-toolbar-icon"
+            onClick={toggleFullscreen}
+            title={isFullscreen ? 'Exit full screen' : 'Full screen'}
+          >
+            {isFullscreen ? <Minimize2 size={14} /> : <Maximize size={14} />}
           </button>
           <button type="button" className="btn-toolbar-icon">
             <Share2 size={14} />

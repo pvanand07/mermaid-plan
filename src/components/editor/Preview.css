@@ -3,6 +3,11 @@
   flex-direction: column;
 }
 
+.preview-panel.is-fullscreen {
+  background: white;
+  border-radius: 0;
+}
+
 .preview-title {
   font-size: 14px;
   font-weight: 600;
