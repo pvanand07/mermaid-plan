@@ -2,7 +2,7 @@ import type {
   AgentContinueRequest,
   AgentStreamPauseInfo,
   AgentStreamRequest,
-  UpdateMermaidToolCall,
+  AgentToolCall,
 } from './types'
 
 export class AgentChatError extends Error {
@@ -17,7 +17,7 @@ export class AgentChatError extends Error {
 
 interface StreamHandlers {
   onDelta: (delta: string) => void
-  onToolCall?: (call: UpdateMermaidToolCall) => void
+  onToolCall?: (call: AgentToolCall) => void
   onDone?: (content: string) => void
   onError?: (message: string) => void
 }
@@ -46,7 +46,7 @@ function parseSseBlock(block: string): { event: string; data: string } | null {
 function processSseBuffer(
   buffer: string,
   handlers: StreamHandlers,
-  state: { lastToolCall?: UpdateMermaidToolCall; sessionId?: string },
+  state: { lastToolCall?: AgentToolCall; sessionId?: string },
 ): { rest: string; result?: StreamProcessResult } {
   let rest = buffer
   let boundary = rest.indexOf('\n\n')
@@ -64,7 +64,7 @@ function processSseBuffer(
         const payload = JSON.parse(parsed.data) as { sessionId?: string }
         if (payload.sessionId) state.sessionId = payload.sessionId
       } else if (parsed.event === 'tool_call') {
-        const payload = JSON.parse(parsed.data) as UpdateMermaidToolCall
+        const payload = JSON.parse(parsed.data) as AgentToolCall
         state.lastToolCall = payload
         handlers.onToolCall?.(payload)
       } else if (parsed.event === 'paused') {
@@ -114,7 +114,7 @@ async function consumeSseStream(
   const reader = body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
-  const state: { lastToolCall?: UpdateMermaidToolCall; sessionId?: string } = {}
+  const state: { lastToolCall?: AgentToolCall; sessionId?: string } = {}
 
   try {
     while (true) {

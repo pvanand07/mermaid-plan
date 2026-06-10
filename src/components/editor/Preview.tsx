@@ -124,7 +124,14 @@ export function Preview({ previewCode, exportCode, filename, zoom, onZoomChange 
           }}
         >
           <div ref={wrapperRef} className="mermaid-wrapper">
-            <MermaidRender code={previewCode} onRendered={handleRendered} />
+            {previewCode.trim() ? (
+              <MermaidRender code={previewCode} onRendered={handleRendered} />
+            ) : (
+              <div className="preview-empty">
+                <p className="preview-empty-title">No diagram yet</p>
+                <p className="preview-empty-desc">Write Mermaid code or pick a template to preview.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

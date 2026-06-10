@@ -1,17 +1,12 @@
 import type { ModelResult, Tool } from '@openrouter/agent'
 import type { SSEStreamingApi } from 'hono/streaming'
-import type { UpdateMermaidInput } from './tools/updateMermaid.js'
-
-export interface StreamedToolCall {
-  id: string
-  name: string
-  arguments: UpdateMermaidInput
-}
+import type { AgentToolCallPayload } from '../types.js'
+import { isClientHandledTool } from './tools/clientTools.js'
 
 export interface AgentStreamOutcome {
   content: string
   paused: boolean
-  toolCall?: StreamedToolCall
+  toolCall?: AgentToolCallPayload
   usage?: {
     inputTokens?: number
     outputTokens?: number
@@ -25,7 +20,7 @@ export async function streamAgentResult(
   sessionId: string,
 ): Promise<AgentStreamOutcome> {
   let content = ''
-  let updateToolCall: StreamedToolCall | undefined
+  let clientToolCall: AgentToolCallPayload | undefined
 
   const textTask = (async () => {
     for await (const delta of result.getTextStream()) {
@@ -39,14 +34,15 @@ export async function streamAgentResult(
 
   const toolTask = (async () => {
     for await (const toolCall of result.getToolCallsStream()) {
-      if (toolCall.name !== 'update_mermaid') continue
+      if (!isClientHandledTool(toolCall.name)) continue
 
-      const call: StreamedToolCall = {
+      const call = {
         id: toolCall.id,
         name: toolCall.name,
-        arguments: toolCall.arguments as UpdateMermaidInput,
-      }
-      updateToolCall = call
+        arguments: toolCall.arguments,
+      } as AgentToolCallPayload
+
+      clientToolCall = call
 
       await stream.writeSSE({
         event: 'tool_call',
@@ -66,12 +62,12 @@ export async function streamAgentResult(
       }
     : undefined
 
-  if (updateToolCall) {
+  if (clientToolCall) {
     await stream.writeSSE({
       event: 'paused',
       data: JSON.stringify({
         sessionId,
-        toolCallId: updateToolCall.id,
+        toolCallId: clientToolCall.id,
         reason: 'awaiting_tool_result',
       }),
     })
@@ -79,7 +75,7 @@ export async function streamAgentResult(
     return {
       content,
       paused: true,
-      toolCall: updateToolCall,
+      toolCall: clientToolCall,
       usage,
     }
   }

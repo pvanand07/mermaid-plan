@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react'
 import { AlignLeft, CheckCircle2, Copy, Eye, Pencil, Sparkles } from 'lucide-react'
+import type { Template } from '../../data/types'
 import { formatValidationMessage, validateMermaidDiagram } from '../../lib/mermaid/validateDiagram'
 import { cn } from '../../lib/cn'
 import { AiPanel } from './AiPanel'
 import { NoteEditor } from './NoteEditor'
+import { TemplateSelect } from './TemplateSelect'
 import './CodeEditor.css'
 
 export type EditorPanelMode = 'code' | 'note'
@@ -11,6 +13,7 @@ export type NoteView = 'edit' | 'preview'
 
 interface CodeEditorProps {
   diagramId?: string
+  diagramTitle: string
   code: string
   setCode: (code: string) => void
   onFormat: () => void
@@ -20,10 +23,13 @@ interface CodeEditorProps {
   noteMd: string
   setNoteMd: (value: string) => void
   onAgentDiagramSave?: (code: string, commitMessage?: string) => Promise<void>
+  onAgentNoteSave?: (noteMd: string, commitMessage?: string) => Promise<void>
+  onApplyTemplate?: (template: Template) => void
 }
 
 export function CodeEditor({
   diagramId,
+  diagramTitle,
   code,
   setCode,
   onFormat,
@@ -33,6 +39,8 @@ export function CodeEditor({
   noteMd,
   setNoteMd,
   onAgentDiagramSave,
+  onAgentNoteSave,
+  onApplyTemplate,
 }: CodeEditorProps) {
   const [aiOpen, setAiOpen] = useState(false)
   const [noteView, setNoteView] = useState<NoteView>('edit')
@@ -59,6 +67,19 @@ export function CodeEditor({
     setValidateMessage(result.ok ? 'No issues detected' : formatValidationMessage(result))
   }
 
+  const updateNote = (next: string) => {
+    setNoteMd(next)
+  }
+
+  const handleTemplateSelect = (template: Template) => {
+    if (code.trim() && !window.confirm(`Replace the current diagram with the "${template.name}" template?`)) {
+      return
+    }
+    setValidateOk(true)
+    setValidateMessage(null)
+    onApplyTemplate?.(template)
+  }
+
   const lineCount = code.split('\n').length
   const lines = Array.from({ length: Math.max(lineCount, 1) }, (_, i) => i + 1)
 
@@ -67,9 +88,13 @@ export function CodeEditor({
       <AiPanel
         open={aiOpen}
         diagramId={diagramId}
+        diagramTitle={diagramTitle}
         diagramCode={code}
+        noteMd={noteMd}
         onDiagramUpdate={updateCode}
+        onNoteUpdate={updateNote}
         onAgentDiagramSave={onAgentDiagramSave}
+        onAgentNoteSave={onAgentNoteSave}
         onMinimize={() => setAiOpen(false)}
       />
       <div className="panel-header">
@@ -125,6 +150,7 @@ export function CodeEditor({
         )}
         {panelMode === 'code' && (
           <div className="toolbar">
+            {onApplyTemplate && <TemplateSelect onSelect={handleTemplateSelect} />}
             <button type="button" className="toolbar-btn" onClick={onFormat}>
               <AlignLeft size={14} className="icon-muted" /> Format
             </button>
@@ -153,6 +179,7 @@ export function CodeEditor({
               onScroll={handleScroll}
               spellCheck={false}
               className="code-textarea"
+              placeholder="Write Mermaid code here, or choose a template…"
             />
           </div>
 

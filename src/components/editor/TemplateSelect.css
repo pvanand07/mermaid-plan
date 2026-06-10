@@ -1,0 +1,63 @@
+.template-select {
+  position: relative;
+}
+
+.template-select-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.template-select-chevron {
+  transition: transform 0.15s ease;
+}
+
+.template-select--open .template-select-chevron {
+  transform: rotate(180deg);
+}
+
+.template-select-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  min-width: 280px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: 8px;
+  border: 1px solid var(--gemini-border);
+  background: var(--gemini-surface);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+.template-select-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.template-select-option:hover {
+  background: #f1f5f9;
+}
+
+.template-select-option-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gemini-text);
+}
+
+.template-select-option-desc {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--gemini-text-muted);
+}

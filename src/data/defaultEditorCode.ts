@@ -1,3 +1,7 @@
+/** Blank starting point for new diagrams */
+export const emptyEditorCode = ''
+
+/** @deprecated Sample diagram — prefer emptyEditorCode for new diagrams */
 export const defaultEditorCode = `flowchart LR
     A[ASML EUV Lithography]:::green
     B[TSMC Wafer Fabrication]:::green

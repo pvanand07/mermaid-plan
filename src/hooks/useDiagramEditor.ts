@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { storageConfig } from '../config/storage'
-import type { DiagramRecord } from '../data/types'
+import type { DiagramRecord, Template } from '../data/types'
 import { useDbReady } from './useDbReady'
 import { createDiagram, getDiagram, updateDiagram } from '../lib/db/diagramRepository'
 import { createVersionSnapshot, listVersions, restoreVersion } from '../lib/db/versionRepository'
@@ -47,6 +47,7 @@ export function useDiagramEditor({
   const lastSnapshotAtRef = useRef<number | null>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isSavingRef = useRef(false)
+  const skipAutosaveRef = useRef(false)
 
   const versions = useLiveQuery(
     () => (diagramId ? listVersions(diagramId) : []),
@@ -150,6 +151,17 @@ export function useDiagramEditor({
 
   useEffect(() => {
     if (!loaded) return
+
+    if (skipAutosaveRef.current) {
+      skipAutosaveRef.current = false
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current)
+        saveTimerRef.current = null
+      }
+      if (saveStatus !== 'saving') setSaveStatus('dirty')
+      return
+    }
+
     const dirty =
       title !== lastSavedRef.current.title ||
       code !== lastSavedRef.current.code ||
@@ -242,6 +254,63 @@ export function useDiagramEditor({
     [diagramId, folderPath, navigate, noteMd, title],
   )
 
+  const applyAgentNoteUpdate = useCallback(
+    async (nextNoteMd: string, commitMessage?: string) => {
+      setNoteMd(nextNoteMd)
+
+      if (isSavingRef.current) return
+
+      isSavingRef.current = true
+      setSaveStatus('saving')
+
+      try {
+        let record: DiagramRecord
+
+        if (!diagramId) {
+          record = await createDiagram({
+            title,
+            mermaidCode: code,
+            noteMd: nextNoteMd || undefined,
+            folderPath,
+          })
+          setDiagramId(record.id)
+          navigate(`/editor/${record.id}`, { replace: true })
+        } else {
+          record = await updateDiagram(diagramId, {
+            noteMd: nextNoteMd || null,
+          })
+        }
+
+        if (storageConfig.versioning.enabled) {
+          lastSnapshotAtRef.current = Date.now()
+          await createVersionSnapshot(record, commitMessage)
+        }
+
+        lastSavedRef.current = {
+          ...lastSavedRef.current,
+          noteMd: nextNoteMd,
+        }
+        setSaveStatus('saved')
+      } catch {
+        setSaveStatus('error')
+      } finally {
+        isSavingRef.current = false
+      }
+    },
+    [code, diagramId, folderPath, navigate, title],
+  )
+
+  const applyTemplate = useCallback(
+    (template: Template) => {
+      skipAutosaveRef.current = true
+      setCode(template.mermaidCode)
+      const isDefaultTitle = title === 'Untitled' || title === 'FlowChart'
+      if (isDefaultTitle) setTitle(template.name)
+      if (!noteMd.trim()) setNoteMd(template.description)
+    },
+    [noteMd, title],
+  )
+
   const subtitle = noteExcerpt(noteMd) ?? undefined
 
   return {
@@ -261,5 +330,7 @@ export function useDiagramEditor({
     loaded,
     restoreVersion: handleRestoreVersion,
     applyAgentDiagramUpdate,
+    applyAgentNoteUpdate,
+    applyTemplate,
   }
 }

@@ -5,7 +5,14 @@ import {
   continueAgentChat,
   streamAgentChat,
 } from '../../lib/agent/streamChat'
-import type { AgentChatMessage, MermaidToolResult } from '../../lib/agent/types'
+import type {
+  AgentChatMessage,
+  AgentStreamPauseInfo,
+  AgentToolCall,
+  AgentToolResult,
+  MermaidToolResult,
+  NoteToolResult,
+} from '../../lib/agent/types'
 import {
   clearConversation,
   getConversation,
@@ -23,8 +30,9 @@ import './AiPanel.css'
 type MessageRole = 'assistant' | 'user'
 
 interface ToolStatus {
+  toolName?: 'update_mermaid' | 'update_note'
   commitMessage?: string
-  result: MermaidToolResult
+  result: AgentToolResult
 }
 
 interface ChatMessage {
@@ -46,16 +54,31 @@ const WELCOME_MESSAGE: ChatMessage = {
 const SUGGESTED_PROMPTS = [
   'Create a flowchart for user login',
   'Explain this diagram',
+  'Document this diagram in the note',
   'Add error handling branches',
-  'Convert to a sequence diagram',
 ]
+
+function formatToolStatusMessage(
+  toolName: 'update_mermaid' | 'update_note' | undefined,
+  result: AgentToolResult,
+): string {
+  if (toolName === 'update_note') {
+    const noteResult = result as NoteToolResult
+    return noteResult.ok ? 'Note updated' : `Note update failed: ${noteResult.error ?? 'Unknown error'}`
+  }
+  return formatValidationMessage(result as MermaidToolResult)
+}
 
 interface AiPanelProps {
   open: boolean
   diagramId?: string
+  diagramTitle: string
   diagramCode: string
+  noteMd: string
   onDiagramUpdate: (code: string) => void
+  onNoteUpdate: (noteMd: string) => void
   onAgentDiagramSave?: (code: string, commitMessage?: string) => Promise<void>
+  onAgentNoteSave?: (noteMd: string, commitMessage?: string) => Promise<void>
   onMinimize: () => void
 }
 
@@ -89,9 +112,13 @@ function toAgentMessages(messages: ChatMessage[]): AgentChatMessage[] {
 export function AiPanel({
   open,
   diagramId,
+  diagramTitle,
   diagramCode,
+  noteMd,
   onDiagramUpdate,
+  onNoteUpdate,
   onAgentDiagramSave,
+  onAgentNoteSave,
   onMinimize,
 }: AiPanelProps) {
   const [input, setInput] = useState('')
@@ -100,8 +127,16 @@ export function AiPanel({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
   const diagramCodeRef = useRef(diagramCode)
+  const noteMdRef = useRef(noteMd)
+  const diagramTitleRef = useRef(diagramTitle)
   const messageIdRef = useRef(0)
   const skipSaveRef = useRef(true)
+
+  const buildAgentContext = () => ({
+    diagramCode: diagramCodeRef.current.trim() || undefined,
+    noteMd: noteMdRef.current.trim() || undefined,
+    diagramTitle: diagramTitleRef.current.trim() || undefined,
+  })
 
   const createMessageId = (prefix: string) => {
     messageIdRef.current += 1
@@ -111,6 +146,14 @@ export function AiPanel({
   useEffect(() => {
     diagramCodeRef.current = diagramCode
   }, [diagramCode])
+
+  useEffect(() => {
+    noteMdRef.current = noteMd
+  }, [noteMd])
+
+  useEffect(() => {
+    diagramTitleRef.current = diagramTitle
+  }, [diagramTitle])
 
   useEffect(() => {
     skipSaveRef.current = true
@@ -176,13 +219,13 @@ export function AiPanel({
   const runAgentStream = async (
     endpoint: 'chat' | 'continue',
     request:
-      | { messages: AgentChatMessage[]; diagramCode?: string }
-      | {
+      | ({ messages: AgentChatMessage[] } & ReturnType<typeof buildAgentContext>)
+      | ({
           sessionId: string
           toolCallId: string
-          toolResult: MermaidToolResult
-          diagramCode?: string
-        },
+          toolCallName: AgentToolCall['name']
+          toolResult: AgentToolResult
+        } & ReturnType<typeof buildAgentContext>),
     assistantId: string,
     controller: AbortController,
   ) => {
@@ -218,30 +261,56 @@ export function AiPanel({
   }
 
   const handleToolPause = async (
-    pause: {
-      sessionId: string
-      toolCallId: string
-      toolCall: { arguments: { code: string; commitMessage?: string } }
-    },
+    pause: AgentStreamPauseInfo,
     assistantId: string,
     controller: AbortController,
   ) => {
-    const { code, commitMessage } = pause.toolCall.arguments
-    onDiagramUpdate(code)
-    diagramCodeRef.current = code
+    const { toolCall } = pause
+    let toolResult: AgentToolResult
+    let toolStatus: ToolStatus
 
-    const validation = await validateMermaidDiagram(code)
+    if (toolCall.name === 'update_mermaid') {
+      const { code, commitMessage } = toolCall.arguments
+      onDiagramUpdate(code)
+      diagramCodeRef.current = code
 
-    if (validation.ok && onAgentDiagramSave) {
-      await onAgentDiagramSave(code, commitMessage)
+      const validation = await validateMermaidDiagram(code)
+
+      if (validation.ok && onAgentDiagramSave) {
+        await onAgentDiagramSave(code, commitMessage)
+      }
+
+      toolResult = validation
+      toolStatus = {
+        toolName: 'update_mermaid',
+        commitMessage,
+        result: validation,
+      }
+    } else {
+      const { noteMd: nextNote, commitMessage } = toolCall.arguments
+      onNoteUpdate(nextNote)
+      noteMdRef.current = nextNote
+
+      let result: NoteToolResult = { ok: true }
+      try {
+        if (onAgentNoteSave) {
+          await onAgentNoteSave(nextNote, commitMessage)
+        }
+      } catch {
+        result = { ok: false, error: 'Failed to save note' }
+      }
+
+      toolResult = result
+      toolStatus = {
+        toolName: 'update_note',
+        commitMessage,
+        result,
+      }
     }
 
     updateAssistantMessage(assistantId, (message) => ({
       ...message,
-      toolStatus: {
-        commitMessage,
-        result: validation,
-      },
+      toolStatus,
     }))
 
     return runAgentStream(
@@ -249,8 +318,9 @@ export function AiPanel({
       {
         sessionId: pause.sessionId,
         toolCallId: pause.toolCallId,
-        toolResult: validation,
-        diagramCode: code,
+        toolCallName: toolCall.name,
+        toolResult,
+        ...buildAgentContext(),
       },
       assistantId,
       controller,
@@ -288,7 +358,7 @@ export function AiPanel({
         'chat',
         {
           messages: toAgentMessages(nextMessages),
-          diagramCode: diagramCodeRef.current.trim() || undefined,
+          ...buildAgentContext(),
         },
         assistantId,
         controller,
@@ -432,7 +502,12 @@ export function AiPanel({
                             {message.toolStatus.commitMessage}
                           </span>
                         )}
-                        <span>{formatValidationMessage(message.toolStatus.result)}</span>
+                        <span>
+                          {formatToolStatusMessage(
+                            message.toolStatus.toolName ?? 'update_mermaid',
+                            message.toolStatus.result,
+                          )}
+                        </span>
                       </div>
                     </div>
                   )}

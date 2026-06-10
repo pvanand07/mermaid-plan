@@ -78,6 +78,7 @@ export interface StoredChatMessage {
   content: string
   error?: boolean
   toolStatus?: {
+    toolName?: 'update_mermaid' | 'update_note'
     commitMessage?: string
     result: {
       ok: boolean

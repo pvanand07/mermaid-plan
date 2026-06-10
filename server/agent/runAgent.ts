@@ -24,7 +24,11 @@ export function createAgentRun(request: AgentChatRequest, options: AgentRunOptio
 
   const result = client.callModel({
     model,
-    instructions: buildInstructions(request.diagramCode),
+    instructions: buildInstructions({
+      title: request.diagramTitle,
+      diagramCode: request.diagramCode,
+      noteMd: request.noteMd,
+    }),
     input: fromChatMessages(request.messages) as Item[],
     tools: MERMAID_AGENT_TOOLS,
     stopWhen: stepCountIs(MAX_AGENT_STEPS),
@@ -38,12 +42,16 @@ export function createAgentContinueRun(request: AgentContinueRequest, options: A
   const client = getOpenRouterClient()
   const model = request.model ?? config.defaultModel
 
-  const unsent = createUnsentResult(request.toolCallId, 'update_mermaid', request.toolResult)
+  const unsent = createUnsentResult(request.toolCallId, request.toolCallName, request.toolResult)
   const toolOutputs = unsentResultsToAPIFormat([unsent])
 
   const result = client.callModel({
     model,
-    instructions: buildInstructions(request.diagramCode),
+    instructions: buildInstructions({
+      title: request.diagramTitle,
+      diagramCode: request.diagramCode,
+      noteMd: request.noteMd,
+    }),
     input: toolOutputs as Item[],
     tools: MERMAID_AGENT_TOOLS,
     stopWhen: stepCountIs(MAX_AGENT_STEPS),

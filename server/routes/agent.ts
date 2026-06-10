@@ -5,8 +5,8 @@ import { config } from '../config.js'
 import { createAgentContinueRun, createAgentRun } from '../agent/runAgent.js'
 import { createAgentSession, getAgentSessionAccessor } from '../agent/sessionStore.js'
 import { streamAgentResult } from '../agent/streamRun.js'
-import type { UpdateMermaidInput } from '../agent/tools/updateMermaid.js'
-import type { AgentChatResponse } from '../types.js'
+import { isClientHandledTool } from '../agent/tools/clientTools.js'
+import type { AgentChatResponse, AgentToolCallPayload } from '../types.js'
 
 const messageSchema = z.object({
   role: z.enum(['user', 'assistant']),
@@ -23,14 +23,19 @@ const toolResultSchema = z.object({
 const chatRequestSchema = z.object({
   messages: z.array(messageSchema).min(1),
   diagramCode: z.string().optional(),
+  noteMd: z.string().optional(),
+  diagramTitle: z.string().optional(),
   model: z.string().min(1).optional(),
 })
 
 const continueRequestSchema = z.object({
   sessionId: z.string().min(1),
   toolCallId: z.string().min(1),
+  toolCallName: z.enum(['update_mermaid', 'update_note']),
   toolResult: toolResultSchema,
   diagramCode: z.string().optional(),
+  noteMd: z.string().optional(),
+  diagramTitle: z.string().optional(),
   model: z.string().min(1).optional(),
 })
 
@@ -77,7 +82,7 @@ agentRoutes.post('/chat', async (c) => {
     const { result, model } = createAgentRun(parsed.data, { state: accessor })
     const [text, response] = await Promise.all([result.getText(), result.getResponse()])
     const toolCalls = await result.getToolCalls()
-    const updateCall = toolCalls.find((call) => call.name === 'update_mermaid')
+    const clientCall = toolCalls.find((call) => isClientHandledTool(call.name))
 
     const body: AgentChatResponse = {
       message: {
@@ -86,13 +91,13 @@ agentRoutes.post('/chat', async (c) => {
       },
       model,
       sessionId,
-      paused: !!updateCall,
-      toolCall: updateCall
-        ? {
-            id: updateCall.id,
-            name: updateCall.name,
-            arguments: updateCall.arguments as UpdateMermaidInput,
-          }
+      paused: !!clientCall,
+      toolCall: clientCall
+        ? ({
+            id: clientCall.id,
+            name: clientCall.name,
+            arguments: clientCall.arguments,
+          } as AgentToolCallPayload)
         : undefined,
       usage: response.usage
         ? {

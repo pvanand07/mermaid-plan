@@ -12,28 +12,51 @@ export interface MermaidToolResult {
   diagramType?: string
 }
 
-export interface AgentChatRequest {
-  messages: ChatMessage[]
+export interface NoteToolResult {
+  ok: boolean
+  error?: string
+}
+
+export type AgentToolResult = MermaidToolResult | NoteToolResult
+
+export interface DiagramContextPayload {
   diagramCode?: string
+  noteMd?: string
+  diagramTitle?: string
+}
+
+export interface AgentChatRequest extends DiagramContextPayload {
+  messages: ChatMessage[]
   model?: string
 }
 
-export interface AgentContinueRequest {
+export interface AgentContinueRequest extends DiagramContextPayload {
   sessionId: string
   toolCallId: string
-  toolResult: MermaidToolResult
-  diagramCode?: string
+  toolCallName: 'update_mermaid' | 'update_note'
+  toolResult: AgentToolResult
   model?: string
 }
 
-export interface AgentToolCallPayload {
+export interface UpdateMermaidToolCallPayload {
   id: string
-  name: string
+  name: 'update_mermaid'
   arguments: {
     code: string
     commitMessage?: string
   }
 }
+
+export interface UpdateNoteToolCallPayload {
+  id: string
+  name: 'update_note'
+  arguments: {
+    noteMd: string
+    commitMessage?: string
+  }
+}
+
+export type AgentToolCallPayload = UpdateMermaidToolCallPayload | UpdateNoteToolCallPayload
 
 export interface AgentChatResponse {
   message: ChatMessage

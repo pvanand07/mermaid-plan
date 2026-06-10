@@ -105,6 +105,26 @@
   pointer-events: auto;
 }
 
+.preview-empty {
+  text-align: center;
+  padding: 24px;
+  max-width: 280px;
+}
+
+.preview-empty-title {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.preview-empty-desc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #64748b;
+}
+
 .mermaid-wrapper rect {
   rx: 6px;
   ry: 6px;

@@ -6,7 +6,7 @@ import { CodeEditor } from '../components/editor/CodeEditor'
 import type { EditorPanelMode } from '../components/editor/CodeEditor'
 import { Preview } from '../components/editor/Preview'
 import { TopBar } from '../components/editor/TopBar'
-import { defaultEditorCode } from '../data'
+import { emptyEditorCode } from '../data'
 import { useDbReady } from '../hooks/useDbReady'
 import { useDebouncedPreview } from '../hooks/useDebouncedPreview'
 import { useDiagramEditor } from '../hooks/useDiagramEditor'
@@ -41,8 +41,8 @@ function EditorSession() {
   const folderPathFromQuery = normalizeFolderPath(searchParams.get('folderPath') ?? '')
   const seedDiagram = id ? (diagrams ?? []).find((d) => d.id === id) : undefined
 
-  const initialCode = state?.code ?? seedDiagram?.mermaidCode ?? defaultEditorCode
-  const initialTitle = state?.title ?? seedDiagram?.title ?? 'FlowChart'
+  const initialCode = state?.code ?? seedDiagram?.mermaidCode ?? emptyEditorCode
+  const initialTitle = state?.title ?? seedDiagram?.title ?? 'Untitled'
   const initialNoteMd = state?.noteMd ?? seedDiagram?.noteMd
   const initialFolderPath = seedDiagram?.folderPath ?? folderPathFromQuery
   const templateNote = state?.description
@@ -89,6 +89,7 @@ function EditorSession() {
       <div className="workspace">
         <CodeEditor
           diagramId={editor.diagramId}
+          diagramTitle={editor.title}
           code={editor.code}
           setCode={editor.setCode}
           onFormat={() => editor.setCode(editor.code.trim())}
@@ -98,6 +99,8 @@ function EditorSession() {
           noteMd={editor.noteMd}
           setNoteMd={editor.setNoteMd}
           onAgentDiagramSave={editor.applyAgentDiagramUpdate}
+          onAgentNoteSave={editor.applyAgentNoteUpdate}
+          onApplyTemplate={editor.applyTemplate}
         />
         <Preview
           previewCode={previewCode}
