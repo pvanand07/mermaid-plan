@@ -46,9 +46,9 @@ flowchart TB
   subgraph NodeServer["Node.js Agent API (Hono)"]
     Routes[/api/agent/*]
     OR[OpenRouter SDK]
-    Sessions[In-memory session store]
+    Ephemeral[Request-scoped agent state]
     Routes --> OR
-    Routes --> Sessions
+    Routes --> Ephemeral
   end
 
   UI -->|SSE + JSON| Proxy --> Routes
@@ -87,14 +87,15 @@ flowchart TB
 | Validation | zod 4 |
 | Icons | lucide-react |
 | Markdown (AI messages, notes) | react-markdown + remark-gfm + rehype-sanitize |
+| SSE parsing | eventsource-parser 3 |
 | Styling | Plain CSS (design tokens in `src/styles/gemini.css`) — **no Tailwind** |
 
 ### TypeScript project references
 
 ```
 tsconfig.json          → references app + node configs
-tsconfig.app.json      → src/** (React app)
-tsconfig.server.json   → server/** (Node agent API)
+tsconfig.app.json      → src/** + shared/** (React app + shared schemas)
+tsconfig.server.json   → server/** + shared/** (Node agent API)
 ```
 
 Build: `tsc -b && vite build` (typecheck both projects, bundle client only).
@@ -110,12 +111,18 @@ mermaid-plan/
 ├── package.json
 ├── .env.example               # OPENROUTER_API_KEY, optional overrides
 ├── architecture.md            # this file
+├── technical-decisions.md     # React patterns & tradeoffs
+│
+├── shared/                    # Zod schemas + types used by client and server
+│   └── agent/
+│       ├── schemas.ts         # chatRequestSchema, continueRequestSchema
+│       └── types.ts           # z.infer wire types + server response shapes
 │
 ├── server/                    # Node agent API (not bundled by Vite)
 │   ├── index.ts               # dotenv + serve Hono app
 │   ├── app.ts                 # CORS, health, route mounting
 │   ├── config.ts              # env parsing
-│   ├── types.ts               # API request/response types
+│   ├── types.ts               # re-exports from shared/agent/types.ts
 │   ├── routes/
 │   │   └── agent.ts           # /chat, /chat/stream, /chat/continue
 │   └── agent/
@@ -140,7 +147,8 @@ mermaid-plan/
     ├── context/
     │   ├── SidebarContext.tsx
     │   ├── sidebar-context.ts
-    │   └── EditorContext.tsx  # scoped to EditorSession
+    │   ├── EditorContext.tsx  # provider component
+    │   └── editor-context.ts  # EditorContextValue type + context object
     ├── data/                  # static seed + templates (not persisted logic)
     │   ├── types.ts           # DiagramRecord, Template, etc.
     │   ├── diagrams.ts        # seed diagrams + folders
@@ -148,15 +156,31 @@ mermaid-plan/
     │   ├── defaultEditorCode.ts
     │   └── index.ts
     ├── hooks/
+    │   ├── useDiagramEditor.ts      # persisted editor state + autosave
+    │   ├── useAutosave.ts           # generic debounced save helper
+    │   ├── useDebouncedValue.ts     # value debounce primitive
+    │   ├── useDebouncedEffect.ts    # effect debounce primitive
+    │   ├── useDebouncedPreview.ts   # 300ms preview code debounce
+    │   ├── useAgentChat.ts          # AI stream/pause/continue reducer
+    │   ├── usePersistedConversation.ts
+    │   ├── useEditor.ts             # EditorContext consumer
+    │   ├── useFolderBrowser.ts
+    │   ├── useStartNewDiagram.ts
+    │   ├── useDbReady.ts
+    │   ├── usePreviewViewport.ts
+    │   ├── useSidebar.ts
+    │   ├── useLocalStorage.ts
+    │   └── useMediaQuery.ts
     ├── lib/
-    │   ├── db/                # Dexie schema + repositories
-    │   ├── agent/             # client SSE consumer
+    │   ├── db/                # Dexie schema + repositories + ensureDbReady
+    │   ├── agent/             # SSE client, types, tool registry, chat types
     │   ├── diagram/
-    │   ├── mermaid/
+    │   ├── mermaid/           # validate, previewValidation, cleanup
     │   ├── folders/
     │   ├── diff/
     │   └── exportDiagram.ts
     ├── pages/
+    │   └── errors/            # DbErrorPage, EditorErrorPage (route errorElement)
     └── components/
         ├── AppLayout.tsx
         ├── AppSidebar.tsx
@@ -169,14 +193,16 @@ mermaid-plan/
 
 ### 5.1 Routing
 
-| Path | Component | Behavior |
-|------|-----------|----------|
-| `/` | `MyDiagramsPage` | Dashboard: folders + recent/diagrams in folder |
-| `/diagrams` | redirect → `/` | Legacy alias |
-| `/templates` | `TemplatesPage` | Template gallery |
-| `/examples` | redirect → `/templates` | Legacy alias |
-| `/editor` | loader | `createDiagram` + `redirect(/editor/:id)` |
-| `/editor/:id` | `EditorPage` | Main editor session; loader hydrates diagram |
+| Path | Loader | Element | Error UI |
+|------|--------|---------|----------|
+| `/` | `rootLoader` (`ensureDbReady`) | `MyDiagramsPage` | `DbErrorPage` (inherited) |
+| `/diagrams` | — | redirect → `/` | — |
+| `/templates` | inherited | `TemplatesPage` | inherited |
+| `/examples` | — | redirect → `/templates` | — |
+| `/editor` | `newDiagramLoader` | redirect → `/editor/:id` | inherited |
+| `/editor/:id` | `diagramLoader` (`getDiagram`) | `EditorPage` | `EditorErrorPage` |
+
+Route tree is defined in `src/router.tsx` via `createBrowserRouter`. `main.tsx` renders `<RouterProvider router={router} />`.
 
 **Folder navigation on dashboard** uses query param `?path=foo/bar`, not nested routes.
 
@@ -217,19 +243,15 @@ SidebarProvider (context)
 ### 5.4 Editor workspace layout
 
 ```
-EditorPage
-  └── EditorSession (keyed by diagram id)
-        ├── TopBar (title, folder, save status, history, export)
-        └── .workspace (flex row)
-              ├── CodeEditor (left panel)
-              │     ├── tabs: Code | Note
-              │     ├── line-number textarea (code)
-              │     ├── NoteEditor / MarkdownPreview (note)
-              │     ├── TemplateSelect dropdown
-              │     ├── Validate button
-              │     └── AiPanel overlay (when open)
-              └── Preview (right panel)
-                    ├── MermaidRender (debounced code)
+EditorPage (useLoaderData → DiagramRecord)
+  └── EditorSession key={id}
+        ├── useDiagramEditor({ id, initial: record })
+        ├── EditorProvider (useEditor context)
+        ├── TopBar ()                    ← consumes useEditor()
+        └── .workspace
+              ├── CodeEditor (panelMode) ← consumes useEditor(); AiPanel inside
+              └── Preview (previewCode, onRenderResult)
+                    ├── MermaidRender → reports validation via onResult
                     ├── pan/zoom viewport
                     └── ExportDropdown
 ```
@@ -242,7 +264,7 @@ EditorPage
 
 ### 5.5 Component conventions
 
-- **No global state library** (no Redux/Zustand). State lives in hooks + React context (sidebar only).
+- **No global state library** (no Redux/Zustand). State lives in hooks + scoped React context (`SidebarContext` app-wide; `EditorContext` only under `EditorSession`).
 - **Repository pattern** for IndexedDB — components/hooks never call `db.*` directly except via `lib/db/*Repository.ts`.
 - **Live queries**: `useLiveQuery` from dexie-react-hooks for reactive lists (diagrams, folders, versions).
 - **Icons**: lucide-react, 14–16px in dense UI.
@@ -269,14 +291,21 @@ mermaid.initialize({
 
 1. Increment render sequence; unique id per render (`mermaid-${useId}-${seq}`).
 2. `mermaid.render(id, code)` → inject SVG, call `bindFunctions`.
-3. On unmount/cancel: cleanup hidden DOM artifacts via `cleanupMermaidRenderElement`.
-4. Errors: user-friendly message in prod; full error in dev (`import.meta.env.DEV`).
+3. Report result upward via `onResult({ ok, diagramType? } | { ok: false, phase, error })`.
+4. On unmount/cancel: cleanup hidden DOM artifacts via `cleanupMermaidRenderElement`.
+5. Errors: user-friendly message in prod; full error in dev (`import.meta.env.DEV`).
 
-**Validation (`validateMermaidDiagram`):**
+**Validation (single render path):**
 
-1. `mermaid.parse(code)` → phase `parse` on failure
-2. `mermaid.render(id, code)` → phase `render` on failure
-3. Success → `{ ok: true, diagramType }` via `detectDiagramType`
+Preview is the source of truth for render validation. `Preview` passes `onRenderResult` up to `EditorSession`, which caches results in `previewValidationRef`.
+
+| Consumer | Path |
+|----------|------|
+| Live preview | `MermaidRender` → `onResult` → cache |
+| Validate button | `validateDiagramCode(code)` → `resolveDiagramValidation` reuses cache when `previewCode === code`, else `parseMermaidSyntax` fallback |
+| Agent `update_mermaid` | `toolRegistry` → same `validateDiagramCode` via `EditorContext` |
+
+`validateMermaidDiagram` still exists for full parse+render when needed offline; normal UI paths avoid duplicate renders.
 
 **Diagram type detection:** first non-comment line's first token, mapped through `TYPE_MAP` (e.g. `flowchart` → `Flowchart`). Default: `Flowchart`.
 
@@ -391,14 +420,24 @@ From `src/config/storage.ts`:
 
 **`useDiagramEditor` persist logic:**
 
-1. On title/code/noteMd/folderPath change → mark dirty → debounce 1500ms → `updateDiagram`
-2. Auto snapshot when content changed AND throttle elapsed
-3. Agent saves (`applyAgentDiagramUpdate` / `applyAgentNoteUpdate`) always snapshot immediately with optional `commitMessage`
-4. `isSavingRef` prevents concurrent saves
+1. Editor fields compose an `EditorSnapshot` object passed to `useAutosave(snapshot, snapshotsEqual, persistSnapshot, 1500ms)`.
+2. `dirty` is derived via `useMemo` against `savedSnapshot` state inside `useAutosave`.
+3. Auto snapshot when content changed AND throttle elapsed (`lastContentRef` tracks version-worthy changes).
+4. Agent saves (`applyAgentDiagramUpdate` / `applyAgentNoteUpdate`) bypass debounce and snapshot immediately with optional `commitMessage`.
+5. `isSavingRef` prevents concurrent saves during agent writes.
 
-### 6.7 DB readiness
+### 6.7 DB readiness & route loaders
 
-`useDbReady` calls `db.open()` once; exposes `{ ready, loading, dbError }`. Pages show banners on `dbError` but still attempt graceful degradation.
+`ensureDbReady()` in `src/lib/db/ensureDbReady.ts` wraps a singleton `db.open()` promise shared across loaders.
+
+| Layer | Responsibility |
+|-------|----------------|
+| `rootLoader` | Awaits `ensureDbReady()` before any child route renders |
+| `diagramLoader` | Loads `DiagramRecord` or throws `Response` 404 |
+| `newDiagramLoader` | Creates diagram, `redirect()` to `/editor/:id` |
+| `DbErrorPage` | Route `errorElement` when DB open fails (503) |
+| `EditorErrorPage` | Route `errorElement` for missing diagrams (404) |
+| `useDbReady` | Legacy hook for pages that still check `dbError` (e.g. dashboard banner) |
 
 ---
 
@@ -421,7 +460,7 @@ Server tool definitions use `execute: false` in `@openrouter/agent/tool`.
 
 | Tool | Input | Client action | Result |
 |------|-------|---------------|--------|
-| `update_mermaid` | `{ code, commitMessage? }` | Set code, `validateMermaidDiagram`, persist + snapshot | `{ ok, diagramType? }` or `{ ok: false, phase, error }` |
+| `update_mermaid` | `{ code, commitMessage? }` | Set code, `resolveDiagramValidation` (preview cache), persist + snapshot | `{ ok, diagramType? }` or `{ ok: false, phase, error }` |
 | `update_note` | `{ noteMd, commitMessage? }` | Set note, persist + snapshot | `{ ok: true }` or `{ ok: false, error }` |
 
 ### 7.3 API endpoints
@@ -499,38 +538,48 @@ Client parser: `src/lib/agent/streamChat.ts` — `eventsource-parser` over `fetc
 
 ### 7.8 Client UI flow (`useAgentChat` + `AiPanel`)
 
+**Module split:**
+
+| Module | Role |
+|--------|------|
+| `AiPanel.tsx` | UI only: message list, suggestions, composer |
+| `useAgentChat.ts` | Reducer, stream/pause/continue loop, abort handling |
+| `usePersistedConversation.ts` | Load/save/clear IndexedDB chat (500ms debounce) |
+| `toolRegistry.ts` | `update_mermaid` / `update_note` handlers |
+| `chatTypes.ts` | `ChatMessage`, `ToolStatus`, welcome message |
+| `streamChat.ts` | SSE fetch + `eventsource-parser` |
+
 ```mermaid
 sequenceDiagram
   participant User
-  participant AiPanel
+  participant useAgentChat
   participant API as Agent API
+  participant toolRegistry
   participant Editor
-  participant Mermaid
 
-  User->>AiPanel: send message
-  AiPanel->>API: POST /chat/stream
+  User->>useAgentChat: sendMessage
+  useAgentChat->>API: POST /chat/stream
   loop text deltas
-    API-->>AiPanel: event text
+    API-->>useAgentChat: event text
   end
-  API-->>AiPanel: event tool_call + paused
-  AiPanel->>Editor: apply code/note
-  AiPanel->>Mermaid: validate (if mermaid)
-  AiPanel->>Editor: persist + version snapshot
-  AiPanel->>API: POST /chat/continue
+  API-->>useAgentChat: tool_call + paused + conversationState
+  useAgentChat->>toolRegistry: runAgentTool
+  toolRegistry->>Editor: apply + validate + persist
+  useAgentChat->>API: POST /chat/continue (conversationState + toolResult)
   loop until done
-    API-->>AiPanel: text / another pause
+    API-->>useAgentChat: text / another pause
   end
 ```
 
 **Conversation persistence:**
 
-- Loaded from `conversations` table on diagram mount
-- Saved debounced 500ms after message changes
+- `usePersistedConversation` loads on `diagramId` change
+- Saved debounced 500ms via `useDebouncedEffect` after message changes
 - Reset clears IndexedDB conversation
 - Welcome message (`id: 'welcome'`) is UI-only, not persisted
 - Message IDs: `user-N`, `assistant-N` monotonic counter
 
-**Refs for agent context:** `diagramCodeRef`, `noteMdRef`, `diagramTitleRef` always hold latest values during multi-step tool loops.
+**Refs for agent context:** `diagramCodeRef`, `noteMdRef`, `diagramTitleRef` in `useAgentChat` hold latest diagram context during multi-step tool loops.
 
 ---
 
@@ -637,12 +686,14 @@ pnpm dev:all
 
 | Area | Pattern |
 |------|---------|
-| DB open failure | `dbError` string + banner; `useDbReady` still sets `ready: true` |
-| Diagram not found | Editor shows "Diagram not found." |
+| DB open failure | `rootLoader` throws → `DbErrorPage` (`errorElement`) |
+| Diagram not found | `diagramLoader` throws 404 → `EditorErrorPage` |
+| DB degraded on dashboard | `db-error-banner` via `useFolderBrowser().dbError` |
 | Agent misconfigured | 503 JSON; UI shows error in chat bubble |
 | Agent stream | `AgentChatError` with status; abort via `AbortController` |
-| Mermaid render | Inline error panel in preview |
+| Mermaid render | Inline error panel in preview; `onResult` reports failure |
 | Save failure | `saveStatus: 'error'` in TopBar |
+| Uncaught render throw | No component-level boundary yet — crashes full SPA |
 
 ---
 
@@ -663,23 +714,23 @@ Use this sequence to rebuild with working increments:
 
 ### Phase 1 — Scaffold
 
-1. Vite + React + TS + react-router-dom
+1. Vite + React + TS + `createBrowserRouter` in `router.tsx`
 2. `gemini.css` design tokens + `AppLayout` + `AppSidebar`
-3. Routes shell (`/`, `/templates`, `/editor/:id`)
+3. `ensureDbReady` root loader + `errorElement` pages
 
 ### Phase 2 — Local data
 
 4. Dexie schema v1 + seed populate
 5. `diagramRepository`, `folderRepository`
 6. `MyDiagramsPage` with folder browser + diagram cards
-7. `startNewDiagram` + `NewEditorRedirect`
+7. `newDiagramLoader` at `/editor` + `startNewDiagram` for in-app buttons
 
 ### Phase 3 — Editor core
 
-8. `useDiagramEditor` with autosave
-9. `CodeEditor` (textarea + line numbers)
-10. `MermaidRender` + `Preview` with debounce
-11. `TopBar` (title, save status)
+8. `diagramLoader` + `useDiagramEditor({ initial })` + `useAutosave`
+9. `EditorProvider` + `CodeEditor` / `TopBar` via `useEditor()`
+10. `MermaidRender` + `Preview` with `useDebouncedPreview`
+11. `previewValidation` cache + `resolveDiagramValidation`
 
 ### Phase 4 — Editor features
 
@@ -693,16 +744,16 @@ Use this sequence to rebuild with working increments:
 
 17. Hono server + health + config
 18. OpenRouter agent + tools (`execute: false`)
-19. SSE stream + session store
-20. `streamChat.ts` client
-21. `AiPanel` with pause/continue loop
+19. Stateless continue via `ephemeralState` + `conversationState` round-trip
+20. `shared/agent/schemas.ts` + `streamChat.ts` (`eventsource-parser`)
+21. `useAgentChat` + `toolRegistry` + `usePersistedConversation` + thin `AiPanel`
 22. Dexie `conversations` v2 + persist chat
 
 ### Phase 6 — Polish
 
-23. Validate button in code editor
+23. Validate button (reuses preview result)
 24. Mobile sidebar behavior
-25. Error banners, beforeunload guard
+25. Route error pages, beforeunload guard
 26. `.env.example`, README updates
 
 ---
@@ -736,26 +787,50 @@ Use this sequence to rebuild with working increments:
 |---------|--------------|
 | Cloud sync | Replace repositories with API-backed implementations |
 | Auth | Wrap routes; add userId to Dexie schema |
-| Examples page | Replace redirect in `App.tsx` |
+| Examples page | Replace redirect in `router.tsx` |
 | Settings | Sidebar footer button |
 | Server-side tools | Set `execute: true` + handler (not recommended for Mermaid) |
 | Multiple AI models | Pass `model` in chat request; expose in UI |
 
 ---
 
-## 20. File checklist (84 source files)
+## 20. File checklist
 
 When recreating, ensure these functional areas exist (names matter for consistency):
 
 - **Pages (3):** `MyDiagramsPage`, `TemplatesPage`, `EditorPage`
+- **Error pages (2):** `DbErrorPage`, `EditorErrorPage`
+- **Routing (2):** `router.tsx`, `App.tsx` (`AppShell` outlet)
 - **Editor components (10):** `CodeEditor`, `Preview`, `TopBar`, `AiPanel`, `NoteEditor`, `MarkdownPreview`, `TemplateSelect`, `FolderSelect`, `ExportDropdown`, `VersionHistoryPanel`
 - **Shared components (10):** `AppLayout`, `AppSidebar`, `DiagramCard`, `FolderCard`, `TemplateCard`, `PageHeader`, `SearchInput`, `MermaidRender`, `Logo`, `MobileMenuButton`, `StarButton`
-- **Hooks (14):** `useDiagramEditor`, `useAutosave`, `useDebouncedValue`, `useDebouncedEffect`, `useAgentChat`, `usePersistedConversation`, `useDbReady`, `useFolderBrowser`, `useStartNewDiagram`, `useDebouncedPreview`, `usePreviewViewport`, `useSidebar`, `useLocalStorage`, `useMediaQuery`
-- **DB (5):** `mermaidStudioDb`, `diagramRepository`, `folderRepository`, `versionRepository`, `conversationRepository`
-- **Agent client (2):** `streamChat.ts`, `types.ts`
+- **Context (4):** `SidebarContext`, `sidebar-context`, `EditorContext`, `editor-context`
+- **Hooks (15):** `useDiagramEditor`, `useAutosave`, `useDebouncedValue`, `useDebouncedEffect`, `useAgentChat`, `usePersistedConversation`, `useEditor`, `useDbReady`, `useFolderBrowser`, `useStartNewDiagram`, `useDebouncedPreview`, `usePreviewViewport`, `useSidebar`, `useLocalStorage`, `useMediaQuery`
+- **DB (6):** `mermaidStudioDb`, `ensureDbReady`, `diagramRepository`, `folderRepository`, `versionRepository`, `conversationRepository`
+- **Agent client (5):** `streamChat.ts`, `types.ts`, `toolRegistry.ts`, `chatTypes.ts`, `previewValidation.ts`
 - **Server (11):** index, app, config, types, agent route, client, prompts, runAgent, streamRun, ephemeralState, 3 tool files
-- **Shared (2):** `shared/agent/schemas.ts`, `shared/agent/types.ts`
+- **Shared wire contracts (2):** `shared/agent/schemas.ts`, `shared/agent/types.ts`
 
 ---
 
-*This document reflects the codebase as of the `mermaid-plan` package (React 19, Mermaid 11, OpenRouter Agent 0.7, Dexie 4). Update it when schema versions, routes, or agent protocols change.*
+## 21. Refactor: collapse duplicated mechanisms
+
+The following consolidations were applied to reduce parallel code paths. See [`technical-decisions.md`](./technical-decisions.md) for React-specific rationale.
+
+| Area | Before | After |
+|------|--------|-------|
+| Agent continue | In-memory `sessionStore` + `sessionId` | `ephemeralState` + client round-trips `conversationState` |
+| Editor bootstrap | `NewEditorRedirect` + `useEffect` load | `newDiagramLoader` / `diagramLoader` + `useLoaderData` |
+| Autosave / debounce | Inline timers in hooks | `useAutosave`, `useDebouncedValue`, `useDebouncedEffect` |
+| AI panel | ~500-line component with stream logic | `useAgentChat` + `usePersistedConversation` + `toolRegistry`; thin `AiPanel` |
+| Editor props | 9–13 props on `TopBar` / `CodeEditor` | `EditorProvider` + `useEditor()` |
+| Mermaid validate | Separate full render on validate | `previewValidation` cache + `resolveDiagramValidation` |
+| Agent wire format | Duplicated Zod on client/server | `shared/agent/schemas.ts` |
+| SSE parsing | Manual buffer splitting | `eventsource-parser` in `streamChat.ts` |
+
+**Deleted:** `server/agent/sessionStore.ts`, `src/pages/NewEditorRedirect.tsx`
+
+**Net effect:** Server code shrinks; client gains `shared/` and extracted hooks. `AiPanel` line count drops significantly while total `src/` grows modestly due to explicit modules.
+
+---
+
+*This document reflects the codebase as of the `mermaid-plan` package (React 19, Mermaid 11, OpenRouter Agent 0.7, Dexie 4), including the collapse-duplicated-mechanisms refactor. Update when schema versions, routes, or agent protocols change.*

@@ -1,35 +1,21 @@
 import { Bot, CheckCircle2, Loader2, Minus, RotateCcw, Send, Sparkles, Wrench } from 'lucide-react'
-import { useAgentChat } from '../../hooks/useAgentChat'
+import type { useAgentChat } from '../../hooks/useAgentChat'
 import { formatToolStatusMessage } from '../../lib/agent/toolRegistry'
 import { cn } from '../../lib/cn'
 import { MarkdownPreview } from './MarkdownPreview'
 import './AiPanel.css'
 
+export type AgentChatState = ReturnType<typeof useAgentChat>
+
 interface AiPanelProps {
   open: boolean
-  diagramId: string
-  diagramTitle: string
-  diagramCode: string
-  noteMd: string
-  onDiagramUpdate: (code: string) => void
-  onNoteUpdate: (noteMd: string) => void
-  onAgentDiagramSave?: (code: string, commitMessage?: string) => Promise<void>
-  onAgentNoteSave?: (noteMd: string, commitMessage?: string) => Promise<void>
-  validateDiagramCode?: (code: string) => Promise<import('../../lib/mermaid/validateDiagram').MermaidValidationResult>
+  chat: AgentChatState
   onMinimize: () => void
 }
 
 export function AiPanel({
   open,
-  diagramId,
-  diagramTitle,
-  diagramCode,
-  noteMd,
-  onDiagramUpdate,
-  onNoteUpdate,
-  onAgentDiagramSave,
-  onAgentNoteSave,
-  validateDiagramCode,
+  chat,
   onMinimize,
 }: AiPanelProps) {
   const {
@@ -41,17 +27,7 @@ export function AiPanel({
     reset,
     messagesEndRef,
     showSuggestions,
-  } = useAgentChat({
-    diagramId,
-    diagramTitle,
-    diagramCode,
-    noteMd,
-    onDiagramUpdate,
-    onNoteUpdate,
-    onAgentDiagramSave,
-    onAgentNoteSave,
-    validateDiagramCode,
-  })
+  } = chat
 
   if (!open) return null
 

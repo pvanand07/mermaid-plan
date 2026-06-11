@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useLoaderData } from 'react-router-dom'
 import { AppLayout } from '../components/AppLayout'
@@ -24,10 +24,28 @@ function EditorSession({ record }: { record: DiagramRecord }) {
   const [zoom, setZoom] = useState(100)
   const previewCode = useDebouncedPreview(editor.code)
   const previewValidationRef = useRef<PreviewValidationCache | null>(null)
+  const [validationError, setValidationError] = useState<
+    Extract<MermaidValidationResult, { ok: false }> | null
+  >(null)
 
   const handleRenderResult = useCallback((code: string, result: MermaidValidationResult) => {
     previewValidationRef.current = { code, result }
-  }, [])
+    if (code === previewCode) {
+      setValidationError(result.ok ? null : result)
+    }
+  }, [previewCode])
+
+  useEffect(() => {
+    if (!previewCode.trim() || editor.code !== previewCode) {
+      setValidationError(null)
+      return
+    }
+
+    const cached = previewValidationRef.current
+    if (cached?.code === previewCode) {
+      setValidationError(cached.result.ok ? null : cached.result)
+    }
+  }, [editor.code, previewCode])
 
   const validateDiagramCode = useCallback(
     (code: string) => resolveDiagramValidation(code, previewCode, previewValidationRef),
@@ -41,8 +59,9 @@ function EditorSession({ record }: { record: DiagramRecord }) {
       previewCode,
       previewValidationRef,
       validateDiagramCode,
+      validationError,
     }),
-    [editor, folderPaths, previewCode, validateDiagramCode],
+    [editor, folderPaths, previewCode, validateDiagramCode, validationError],
   )
 
   return (

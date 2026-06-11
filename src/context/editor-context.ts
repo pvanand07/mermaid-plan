@@ -24,6 +24,7 @@ export interface EditorContextValue {
   previewCode: string
   previewValidationRef: MutableRefObject<PreviewValidationCache | null>
   validateDiagramCode: (code: string) => Promise<MermaidValidationResult>
+  validationError: Extract<MermaidValidationResult, { ok: false }> | null
 }
 
 export const EditorContext = createContext<EditorContextValue | null>(null)
