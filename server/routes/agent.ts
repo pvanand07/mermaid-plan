@@ -1,8 +1,9 @@
 import type { Context } from 'hono'
 import { Hono } from 'hono'
 import { streamSSE } from 'hono/streaming'
-import { chatRequestSchema, continueRequestSchema } from '../../shared/agent/schemas.ts'
+import { chatRequestSchema, continueRequestSchema } from '../../shared/agent/schemas.js'
 import { config } from '../config.js'
+import { applyTieredRateLimits } from '../middleware/rateLimits.js'
 import { createEphemeralAccessor } from '../agent/ephemeralState.js'
 import { createAgentContinueRun, createAgentRun } from '../agent/runAgent.js'
 import { streamAgentResult } from '../agent/streamRun.js'
@@ -73,6 +74,12 @@ function streamAgent(c: Context, mode: 'chat' | 'continue', data: ChatRequest | 
 }
 
 export const agentRoutes = new Hono()
+
+if (config.rateLimit.enabled) {
+  applyTieredRateLimits(agentRoutes, '/chat', 'chat')
+  applyTieredRateLimits(agentRoutes, '/chat/stream', 'stream')
+  applyTieredRateLimits(agentRoutes, '/chat/continue', 'continue')
+}
 
 agentRoutes.post('/chat', async (c) => {
   if (!config.isConfigured) return missingKeyResponse(c)

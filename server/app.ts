@@ -1,19 +1,27 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { config } from './config.js'
+import { applyTieredRateLimits } from './middleware/rateLimits.js'
 import { agentRoutes } from './routes/agent.js'
 
 export const app = new Hono()
 
+const allowedOrigins = new Set(config.corsOrigins)
+
 app.use(
   '/api/*',
   cors({
-    origin: (origin) =>
-      /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ? origin : '',
+    origin: (origin) => (allowedOrigins.has(origin) ? origin : ''),
     allowMethods: ['GET', 'POST', 'OPTIONS'],
     allowHeaders: ['Content-Type'],
+    maxAge: 86_400,
   }),
 )
+
+if (config.rateLimit.enabled) {
+  applyTieredRateLimits(app, '/api/health', 'health')
+  applyTieredRateLimits(app, '/api/agent/*', 'global')
+}
 
 app.get('/api/health', (c) =>
   c.json({
