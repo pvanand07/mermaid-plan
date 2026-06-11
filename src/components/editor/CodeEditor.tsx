@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { Copy, Eye, Loader2, Pencil, Sparkles, Wrench } from 'lucide-react'
+import { Copy, Eye, Loader2, Pencil, Sparkles } from 'lucide-react'
 import type { Template } from '../../data/types'
 import { useAgentChat } from '../../hooks/useAgentChat'
 import { useEditor } from '../../hooks/useEditor'
@@ -233,7 +233,7 @@ export function CodeEditor({ panelMode, onPanelModeChange }: CodeEditorProps) {
                   {isAiFixing ? (
                     <Loader2 size={14} className="editor-fix-btn-spinner" />
                   ) : (
-                    <Wrench size={14} />
+                    <Sparkles size={14} />
                   )}
                   Fix with AI
                 </button>
