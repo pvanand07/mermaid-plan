@@ -12,7 +12,7 @@ export type EditorPanelMode = 'code' | 'note'
 export type NoteView = 'edit' | 'preview'
 
 interface CodeEditorProps {
-  diagramId?: string
+  diagramId: string
   diagramTitle: string
   code: string
   setCode: (code: string) => void

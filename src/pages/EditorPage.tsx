@@ -1,60 +1,26 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useLocation, useParams, useSearchParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { AppLayout } from '../components/AppLayout'
 import { CodeEditor } from '../components/editor/CodeEditor'
 import type { EditorPanelMode } from '../components/editor/CodeEditor'
 import { Preview } from '../components/editor/Preview'
 import { TopBar } from '../components/editor/TopBar'
-import { emptyEditorCode } from '../data'
 import { useDbReady } from '../hooks/useDbReady'
 import { useDebouncedPreview } from '../hooks/useDebouncedPreview'
 import { useDiagramEditor } from '../hooks/useDiagramEditor'
-import { listDiagrams } from '../lib/db/diagramRepository'
 import { listAllFolderPaths } from '../lib/db/folderRepository'
-import { normalizeFolderPath } from '../lib/folders/pathUtils'
 
-function EditorSession() {
-  const { id } = useParams()
-  const location = useLocation()
-  const [searchParams] = useSearchParams()
-  const { ready, dbError, loading } = useDbReady()
-  const state = location.state as {
-    code?: string
-    title?: string
-    noteMd?: string
-    description?: string
-  } | null
-
-  const diagrams = useLiveQuery(
-    () => (ready && !dbError ? listDiagrams() : []),
-    [ready, dbError],
-    [],
-  )
+function EditorSession({ id }: { id: string }) {
+  const { dbError, loading } = useDbReady()
 
   const folderPaths = useLiveQuery(
-    () => (ready && !dbError ? listAllFolderPaths() : []),
-    [ready, dbError],
+    () => (!dbError ? listAllFolderPaths() : []),
+    [dbError],
     [],
   )
 
-  const folderPathFromQuery = normalizeFolderPath(searchParams.get('folderPath') ?? '')
-  const seedDiagram = id ? (diagrams ?? []).find((d) => d.id === id) : undefined
-
-  const initialCode = state?.code ?? seedDiagram?.mermaidCode ?? emptyEditorCode
-  const initialTitle = state?.title ?? seedDiagram?.title ?? 'Untitled'
-  const initialNoteMd = state?.noteMd ?? seedDiagram?.noteMd
-  const initialFolderPath = seedDiagram?.folderPath ?? folderPathFromQuery
-  const templateNote = state?.description
-
-  const editor = useDiagramEditor({
-    id,
-    initialCode,
-    initialTitle,
-    initialNoteMd,
-    initialFolderPath,
-    templateNote,
-  })
+  const editor = useDiagramEditor({ id })
 
   const [panelMode, setPanelMode] = useState<EditorPanelMode>('code')
   const [zoom, setZoom] = useState(100)
@@ -64,6 +30,14 @@ function EditorSession() {
     return (
       <AppLayout embedMobileMenu>
         <div className="editor-loading">Loading diagram…</div>
+      </AppLayout>
+    )
+  }
+
+  if (editor.notFound) {
+    return (
+      <AppLayout embedMobileMenu>
+        <div className="editor-loading">Diagram not found.</div>
       </AppLayout>
     )
   }
@@ -116,7 +90,8 @@ function EditorSession() {
 
 export function EditorPage() {
   const { id } = useParams()
-  const location = useLocation()
 
-  return <EditorSession key={id ?? location.key} />
+  if (!id) return null
+
+  return <EditorSession key={id} id={id} />
 }

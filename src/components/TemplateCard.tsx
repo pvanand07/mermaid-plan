@@ -1,11 +1,13 @@
 import { createElement } from 'react'
-import { Link } from 'react-router-dom'
 import { getTemplateIcon, type Template } from '../data'
+import { useStartNewDiagram } from '../hooks/useStartNewDiagram'
 import { cn } from '../lib/cn'
 import { MermaidRender } from './MermaidRender'
 import { StarButton } from './StarButton'
 
 export function TemplateCard({ template }: { template: Template }) {
+  const { startNewDiagram, creating } = useStartNewDiagram()
+
   return (
     <div className="card template-card">
       <div className="template-card-preview">
@@ -21,17 +23,20 @@ export function TemplateCard({ template }: { template: Template }) {
         <h3 className="template-card-title">{template.name}</h3>
         <p className="template-card-desc">{template.description}</p>
         <div className="template-card-footer">
-          <Link
-            to="/editor"
-            state={{
-              code: template.mermaidCode,
-              title: template.name,
-              description: template.description,
-            }}
+          <button
+            type="button"
             className="template-use-btn"
+            disabled={creating}
+            onClick={() =>
+              void startNewDiagram({
+                title: template.name,
+                mermaidCode: template.mermaidCode,
+                noteMd: template.description,
+              })
+            }
           >
             Use template
-          </Link>
+          </button>
           <StarButton starred={template.starred} />
         </div>
       </div>

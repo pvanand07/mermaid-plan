@@ -3,6 +3,7 @@ import { SidebarProvider } from './context/SidebarContext'
 import { MyDiagramsPage } from './pages/MyDiagramsPage'
 import { TemplatesPage } from './pages/TemplatesPage'
 import { EditorPage } from './pages/EditorPage'
+import { NewEditorRedirect } from './pages/NewEditorRedirect'
 
 const redirects: Record<string, string> = {
   '/diagrams': '/',
@@ -19,7 +20,7 @@ function App() {
             <Route key={from} path={from} element={<Navigate to={to} replace />} />
           ))}
           <Route path="/templates" element={<TemplatesPage />} />
-          <Route path="/editor" element={<EditorPage />} />
+          <Route path="/editor" element={<NewEditorRedirect />} />
           <Route path="/editor/:id" element={<EditorPage />} />
         </Routes>
       </SidebarProvider>

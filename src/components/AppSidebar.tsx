@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
+import { useStartNewDiagram } from '../hooks/useStartNewDiagram'
 import {
   ChevronLeft,
   ChevronRight,
@@ -24,6 +25,7 @@ const navItems = [
 export function AppSidebar() {
   const location = useLocation()
   const { collapsed, toggleCollapsed, mobileOpen, closeMobile, isMobile } = useSidebar()
+  const { startNewDiagram, creating } = useStartNewDiagram()
   const showCollapsed = collapsed && !isMobile
 
   return (
@@ -50,15 +52,19 @@ export function AppSidebar() {
       </div>
 
       <div className="sidebar-cta">
-        <Link
-          to="/editor"
+        <button
+          type="button"
           className="new-diagram-btn"
           title={showCollapsed ? 'New Diagram' : undefined}
-          onClick={closeMobile}
+          disabled={creating}
+          onClick={() => {
+            closeMobile()
+            void startNewDiagram()
+          }}
         >
           <Plus size={16} />
           <span className="sidebar-label">New Diagram</span>
-        </Link>
+        </button>
       </div>
 
       <nav className="sidebar-content sidebar-nav">

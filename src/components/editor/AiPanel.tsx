@@ -71,7 +71,7 @@ function formatToolStatusMessage(
 
 interface AiPanelProps {
   open: boolean
-  diagramId?: string
+  diagramId: string
   diagramTitle: string
   diagramCode: string
   noteMd: string
@@ -159,13 +159,6 @@ export function AiPanel({
     skipSaveRef.current = true
     let cancelled = false
 
-    if (!diagramId) {
-      setMessages([WELCOME_MESSAGE])
-      messageIdRef.current = 0
-      skipSaveRef.current = false
-      return
-    }
-
     void getConversation(diagramId).then((record) => {
       if (cancelled) return
 
@@ -186,7 +179,7 @@ export function AiPanel({
   }, [diagramId])
 
   useEffect(() => {
-    if (!diagramId || skipSaveRef.current || isStreaming) return
+    if (skipSaveRef.current || isStreaming) return
 
     const stored = toStoredMessages(messages)
     if (stored.length === 0) return

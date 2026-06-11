@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { ChevronRight as ChevronRightIcon, Plus } from 'lucide-react'
 import { AppLayout } from '../components/AppLayout'
 import { DiagramCard } from '../components/DiagramCard'
@@ -7,6 +6,7 @@ import { FolderCard } from '../components/FolderCard'
 import { PageHeader } from '../components/PageHeader'
 import { SearchInput } from '../components/SearchInput'
 import { useFolderBrowser } from '../hooks/useFolderBrowser'
+import { useStartNewDiagram } from '../hooks/useStartNewDiagram'
 import { getFolderName } from '../lib/folders/pathUtils'
 
 export function MyDiagramsPage() {
@@ -21,6 +21,7 @@ export function MyDiagramsPage() {
     navigateToFolder,
     handleCreateFolder,
   } = useFolderBrowser()
+  const { startNewDiagram, creating } = useStartNewDiagram()
 
   const q = query.trim().toLowerCase()
 
@@ -40,10 +41,6 @@ export function MyDiagramsPage() {
         getFolderName(d.folderPath).toLowerCase().includes(q),
     )
   }, [recentDiagrams, q])
-
-  const newDiagramHref = currentPath
-    ? `/editor?folderPath=${encodeURIComponent(currentPath)}`
-    : '/editor'
 
   if (loading) {
     return (
@@ -69,10 +66,15 @@ export function MyDiagramsPage() {
             title="My Diagrams"
             subtitle="All your saved diagrams in one place."
             actions={
-              <Link to={newDiagramHref} className="btn btn-primary">
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={creating}
+                onClick={() => void startNewDiagram({ folderPath: currentPath })}
+              >
                 <Plus size={16} />
                 New Diagram
-              </Link>
+              </button>
             }
           />
 
