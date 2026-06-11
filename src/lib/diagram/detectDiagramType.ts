@@ -13,13 +13,28 @@ const TYPE_MAP: Record<string, string> = {
   mindmap: 'Mindmap',
   timeline: 'Timeline',
   c4context: 'C4 Context',
+  quadrantchart: 'Quadrant Chart',
+  'xychart-beta': 'XY Chart',
+  'sankey-beta': 'Sankey',
+  kanban: 'Kanban',
+  'block-beta': 'Block Diagram',
+  'architecture-beta': 'Architecture',
+  'radar-beta': 'Radar Chart',
+  'treemap-beta': 'Treemap',
+  'packet-beta': 'Packet Diagram',
+  packet: 'Packet Diagram',
+  info: 'Info',
+  'ishikawa-beta': 'Ishikawa',
+  ishikawa: 'Ishikawa',
+  c4container: 'C4 Container',
+  requirementdiagram: 'Requirement',
 }
 
 export function detectDiagramType(mermaidCode: string): string {
   const firstLine = mermaidCode
     .split('\n')
     .map((l) => l.trim())
-    .find((l) => l.length > 0 && !l.startsWith('%%'))
+    .find((l) => l.length > 0 && !l.startsWith('%%') && !l.startsWith('---'))
 
   if (!firstLine) return 'Flowchart'
 
