@@ -16,7 +16,8 @@
     "docker:up": "docker compose up -d --build",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f",
-    "deploy": "bash deploy/ssh-deploy.sh"
+    "deploy": "powershell -NoProfile -ExecutionPolicy Bypass -File deploy/ssh-deploy.ps1",
+    "deploy:bash": "bash deploy/ssh-deploy.sh"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.11",
