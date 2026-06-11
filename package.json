@@ -15,7 +15,8 @@
     "start:server": "node dist-server/server/index.js",
     "docker:up": "docker compose up -d --build",
     "docker:down": "docker compose down",
-    "docker:logs": "docker compose logs -f"
+    "docker:logs": "docker compose logs -f",
+    "deploy": "bash deploy/ssh-deploy.sh"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.11",
