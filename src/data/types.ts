@@ -1,23 +1,3 @@
-/** @deprecated Seed-only UI type; use DiagramRecord for persisted data */
-export interface Folder {
-  id: string
-  name: string
-  count: number
-  color: string
-  iconColor: string
-}
-
-/** @deprecated Seed-only UI type; use DiagramRecord for persisted data */
-export interface Diagram {
-  id: string
-  title: string
-  type: string
-  editedAgo: string
-  starred: boolean
-  folder?: string
-  mermaidCode: string
-}
-
 export interface Template {
   id: string
   name: string

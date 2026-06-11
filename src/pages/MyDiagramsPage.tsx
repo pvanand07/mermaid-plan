@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react'
-import { ChevronRight as ChevronRightIcon, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { AppLayout } from '../components/AppLayout'
+import { CreateFolderDialog } from '../components/CreateFolderDialog'
 import { DiagramCard } from '../components/DiagramCard'
+import { FolderBreadcrumbs } from '../components/FolderBreadcrumbs'
 import { FolderCard } from '../components/FolderCard'
 import { PageHeader } from '../components/PageHeader'
 import { SearchInput } from '../components/SearchInput'
@@ -11,6 +13,7 @@ import { getFolderName } from '../lib/folders/pathUtils'
 
 export function MyDiagramsPage() {
   const [query, setQuery] = useState('')
+  const [folderDialogOpen, setFolderDialogOpen] = useState(false)
   const {
     dbError,
     currentPath,
@@ -18,7 +21,7 @@ export function MyDiagramsPage() {
     recentDiagrams,
     breadcrumbs,
     navigateToFolder,
-    handleCreateFolder,
+    createFolderAtPath,
   } = useFolderBrowser()
   const { startNewDiagram, creating } = useStartNewDiagram()
 
@@ -67,21 +70,6 @@ export function MyDiagramsPage() {
             }
           />
 
-          <nav className="folder-breadcrumbs" aria-label="Folder path">
-            {breadcrumbs.map((crumb, i) => (
-              <span key={crumb.path || 'root'} className="breadcrumb-item">
-                {i > 0 && <ChevronRightIcon size={14} className="icon-subtle breadcrumb-sep" />}
-                <button
-                  type="button"
-                  className="breadcrumb-link"
-                  onClick={() => navigateToFolder(crumb.path)}
-                >
-                  {crumb.label}
-                </button>
-              </span>
-            ))}
-          </nav>
-
           <div className="toolbar-row">
             <SearchInput
               placeholder="Search diagrams and folders..."
@@ -90,8 +78,9 @@ export function MyDiagramsPage() {
             />
           </div>
 
-          <section className="content-section">
-            <h2 className="section-heading">Folders</h2>
+          <FolderBreadcrumbs crumbs={breadcrumbs} onNavigate={navigateToFolder} />
+
+          <section className="content-section content-section--folders">
             <div className="folder-row">
               {filteredFolders.map((folder) => (
                 <FolderCard
@@ -104,7 +93,11 @@ export function MyDiagramsPage() {
                   onOpen={() => navigateToFolder(folder.path)}
                 />
               ))}
-              <button type="button" className="new-folder-card" onClick={() => void handleCreateFolder()}>
+              <button
+                type="button"
+                className="new-folder-card"
+                onClick={() => setFolderDialogOpen(true)}
+              >
                 <Plus size={16} />
                 New Folder
               </button>
@@ -125,6 +118,14 @@ export function MyDiagramsPage() {
           </section>
         </div>
       </main>
+
+      <CreateFolderDialog
+        open={folderDialogOpen}
+        parentPath={currentPath}
+        siblingNames={childFolders.map((folder) => folder.name)}
+        onClose={() => setFolderDialogOpen(false)}
+        onCreate={createFolderAtPath}
+      />
     </AppLayout>
   )
 }

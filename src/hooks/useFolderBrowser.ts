@@ -73,11 +73,8 @@ export function useFolderBrowser() {
     }
   }
 
-  const handleCreateFolder = async () => {
-    const name = window.prompt('Folder name')
-    if (!name?.trim()) return
-    const newPath = currentPath ? `${currentPath}/${name.trim()}` : name.trim()
-    await createFolder(newPath)
+  const createFolderAtPath = async (folderPath: string) => {
+    await createFolder(folderPath)
   }
 
   const recentDiagrams = useMemo((): DiagramRecord[] => {
@@ -92,7 +89,7 @@ export function useFolderBrowser() {
     recentDiagrams,
     breadcrumbs,
     navigateToFolder,
-    handleCreateFolder,
+    createFolderAtPath,
     allDiagrams: diagramList,
     dbError,
   }

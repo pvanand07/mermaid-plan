@@ -6,7 +6,6 @@ import {
   HelpCircle,
   LayoutGrid,
   LayoutTemplate,
-  PlayCircle,
   Plus,
   Settings,
   Sparkles,
@@ -19,7 +18,6 @@ import { Logo } from './Logo'
 const navItems = [
   { label: 'My Diagrams', icon: LayoutGrid, path: '/' },
   { label: 'Templates', icon: LayoutTemplate, path: '/templates' },
-  { label: 'Examples', icon: PlayCircle, path: '/examples' },
 ]
 
 export function AppSidebar() {

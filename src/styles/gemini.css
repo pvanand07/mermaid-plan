@@ -897,7 +897,9 @@
 
 .folder-card {
   display: flex;
-  min-width: 200px;
+  flex: 0 0 200px;
+  width: 200px;
+  max-width: 200px;
   align-items: center;
   gap: 12px;
   padding: 16px;
@@ -934,7 +936,9 @@
 
 .new-folder-card {
   display: flex;
-  min-width: 200px;
+  flex: 0 0 200px;
+  width: 200px;
+  max-width: 200px;
   align-items: center;
   justify-content: center;
   gap: 8px;
@@ -951,6 +955,90 @@
 .new-folder-card:hover {
   border-color: #a5b4fc;
   color: var(--gemini-primary);
+}
+
+.create-folder-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+.create-folder-dialog {
+  width: min(420px, 100%);
+  background: var(--gemini-surface);
+  border-radius: var(--gemini-radius-lg);
+  box-shadow:
+    0 24px 48px rgba(15, 23, 42, 0.18),
+    0 0 0 1px rgba(226, 232, 240, 0.8);
+  overflow: hidden;
+}
+
+.create-folder-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 16px 0;
+}
+
+.create-folder-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--gemini-text);
+}
+
+.create-folder-form {
+  padding: 16px;
+}
+
+.create-folder-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--gemini-border);
+  border-radius: var(--gemini-radius-md);
+  font-size: 14px;
+  background: var(--gemini-surface);
+  color: var(--gemini-text);
+  box-shadow: var(--gemini-shadow-sm);
+}
+
+.create-folder-input::placeholder {
+  color: var(--gemini-text-subtle);
+}
+
+.create-folder-input:focus {
+  outline: none;
+  border-color: #a5b4fc;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.create-folder-input--error {
+  border-color: #f87171;
+}
+
+.create-folder-input--error:focus {
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.15);
+}
+
+.create-folder-error {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #dc2626;
+}
+
+.create-folder-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
 }
 
 .template-card {
@@ -1541,43 +1629,102 @@
   color: var(--gemini-text-muted);
 }
 
-.folder-breadcrumbs {
+.folder-path-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 4px;
-  margin-bottom: 16px;
+  margin-top: 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--gemini-border);
+  border-radius: var(--gemini-radius-md);
+  background: #f8fafc;
   font-size: 13px;
+  line-height: 1.4;
 }
 
-.breadcrumb-item {
+.folder-path-leading {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.folder-path-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gemini-text);
+}
+
+.folder-path-title-sep {
+  flex-shrink: 0;
+}
+
+.folder-path-trail {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.folder-path-segment {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.folder-path-sep {
+  flex-shrink: 0;
+  margin: 0 2px;
+}
+
+.folder-path-link {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-}
-
-.breadcrumb-link {
-  background: none;
+  padding: 2px 6px;
   border: none;
-  color: var(--gemini-primary);
-  cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 4px;
+  border-radius: var(--gemini-radius-sm);
+  background: none;
+  color: var(--gemini-text-muted);
   font-size: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
 }
 
-.breadcrumb-link:hover {
-  background: var(--gemini-surface-subtle);
+.folder-path-link:hover {
+  color: var(--gemini-primary);
+  background: var(--gemini-primary-soft);
 }
 
-.breadcrumb-sep {
-  flex-shrink: 0;
+.folder-path-link--home {
+  padding: 4px 6px;
+}
+
+.folder-path-current {
+  padding: 2px 6px;
+  font-weight: 600;
+  color: var(--gemini-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-path-bar + .content-section--folders {
+  margin-top: 12px;
+}
+
+.folder-path-bar + .content-section--folders .folder-row {
+  margin-top: 0;
 }
 
 .folder-card--clickable {
   cursor: pointer;
   text-align: left;
-  width: 100%;
   border: none;
   font: inherit;
 }

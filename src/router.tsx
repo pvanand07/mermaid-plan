@@ -54,7 +54,6 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <MyDiagramsPage /> },
       { path: 'diagrams', element: <Navigate to="/" replace /> },
-      { path: 'examples', element: <Navigate to="/templates" replace /> },
       { path: 'templates', element: <TemplatesPage /> },
       { path: 'editor', loader: newDiagramLoader },
       {
