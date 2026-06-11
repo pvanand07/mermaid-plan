@@ -1,4 +1,5 @@
 import { createParser, type EventSourceMessage } from 'eventsource-parser'
+import { agentApiUrl } from './agentApiBase'
 import type {
   AgentContinueRequest,
   AgentStreamPauseInfo,
@@ -165,7 +166,7 @@ export async function streamAgentChat(
   handlers: StreamHandlers,
   signal?: AbortSignal,
 ): Promise<AgentStreamPauseInfo | undefined> {
-  return postAgentStream('/api/agent/chat/stream', request, handlers, signal)
+  return postAgentStream(agentApiUrl('/api/agent/chat/stream'), request, handlers, signal)
 }
 
 export async function continueAgentChat(
@@ -173,5 +174,5 @@ export async function continueAgentChat(
   handlers: StreamHandlers,
   signal?: AbortSignal,
 ): Promise<AgentStreamPauseInfo | undefined> {
-  return postAgentStream('/api/agent/chat/continue', request, handlers, signal)
+  return postAgentStream(agentApiUrl('/api/agent/chat/continue'), request, handlers, signal)
 }

@@ -20,13 +20,25 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
   return Math.floor(parsed)
 }
 
+function normalizeOrigin(url: string): string {
+  const trimmed = url.trim().replace(/\/$/, '')
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed
+  return `https://${trimmed}`
+}
+
 function parseOrigins(value: string | undefined): string[] {
   const defaults = ['http://localhost:5173', 'http://127.0.0.1:5173']
   if (!value?.trim()) return defaults
   return value
     .split(',')
-    .map((origin) => origin.trim())
+    .map((origin) => normalizeOrigin(origin))
     .filter(Boolean)
+}
+
+function resolveCorsOrigins(): string[] {
+  const appUrl = process.env.APP_URL?.trim()
+  if (appUrl) return [normalizeOrigin(appUrl)]
+  return parseOrigins(process.env.CORS_ORIGINS)
 }
 
 export type RateLimitWindow = 'minute' | 'hour' | 'day' | 'week' | 'month'
@@ -86,7 +98,7 @@ export const config = {
   host: process.env.HOST ?? '127.0.0.1',
   openRouterApiKey: process.env.OPENROUTER_API_KEY ?? '',
   defaultModel: process.env.OPENROUTER_MODEL ?? 'openai/gpt-4o-mini',
-  corsOrigins: parseOrigins(process.env.CORS_ORIGINS),
+  corsOrigins: resolveCorsOrigins(),
   trustProxy: parseBoolean(process.env.TRUST_PROXY, false),
   rateLimit: {
     enabled: parseBoolean(process.env.RATE_LIMIT_ENABLED, true),

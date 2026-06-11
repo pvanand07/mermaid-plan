@@ -1,0 +1,26 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        VITE_DIAGRAM_AGENT_URL: ${DIAGRAM_AGENT_URL:?DIAGRAM_AGENT_URL is required}
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    restart: unless-stopped
+
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    ports:
+      - "${AGENT_PORT:-3001}:3001"
+    environment:
+      APP_URL: ${APP_URL:?APP_URL is required}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?OPENROUTER_API_KEY is required}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openai/gpt-4o-mini}
+      HOST: 0.0.0.0
+      PORT: 3001
+      TRUST_PROXY: ${TRUST_PROXY:-true}
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+    restart: unless-stopped

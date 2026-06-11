@@ -8,9 +8,14 @@
     "dev:server": "tsx watch server/index.ts",
     "dev:all": "pnpm run --parallel \"/^(dev|dev:server)$/\"",
     "build": "tsc -b && vite build",
+    "build:server": "tsc -p tsconfig.server.build.json",
     "lint": "eslint .",
     "preview": "vite preview",
-    "server": "tsx server/index.ts"
+    "server": "tsx server/index.ts",
+    "start:server": "node dist-server/server/index.js",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.11",

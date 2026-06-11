@@ -1,0 +1,17 @@
+node_modules
+dist
+dist-server
+.git
+.gitignore
+*.md
+.env
+.env.*
+!.env.example
+!.env.docker.example
+docker-compose*.yml
+Dockerfile*
+terminals
+.cursor
+mcps
+agent-transcripts
+tsconfig.*.tsbuildinfo
