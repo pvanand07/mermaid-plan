@@ -5,9 +5,6 @@ networks:
       config:
         - subnet: 10.200.0.0/24
 
-volumes:
-  agent-data:
-
 services:
   web:
     build:
@@ -33,11 +30,12 @@ services:
       KINDE_CLIENT_SECRET: ${KINDE_CLIENT_SECRET:-}
       KINDE_ISSUER_URL: ${KINDE_ISSUER_URL:-https://elevatics.kinde.com}
       KINDE_SITE_URL: ${KINDE_SITE_URL:-}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
       SQLITE_PATH: /app/data/mermaid-studio.db
       HOST: 0.0.0.0
       PORT: 3001
       TRUST_PROXY: ${TRUST_PROXY:-true}
       RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
     volumes:
-      - agent-data:/app/data
+      - ./data:/app/data
     restart: unless-stopped

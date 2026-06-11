@@ -11,7 +11,8 @@ lerna-debug.log*
 node_modules
 dist
 dist-server
-data/
+data/*
+!data/.gitkeep
 dist-ssr
 *.local
 .env
