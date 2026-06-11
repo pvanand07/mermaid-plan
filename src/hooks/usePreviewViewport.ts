@@ -1,4 +1,11 @@
-import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type RefObject,
+} from 'react'
 import { computeFitView, MAX_ZOOM, MIN_ZOOM, type Pan } from '../lib/previewFit'
 
 export type { Pan }
@@ -12,10 +19,13 @@ function isInteractiveNodeTarget(target: EventTarget | null): boolean {
 export function usePreviewViewport(
   zoom: number,
   onZoomChange: (zoom: number) => void,
+  containerRef: RefObject<HTMLDivElement | null>,
 ) {
   const [pan, setPan] = useState<Pan>({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
   const dragStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 })
+  const zoomRef = useRef(zoom)
+  zoomRef.current = zoom
 
   const clampZoom = useCallback(
     (value: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value)),
@@ -58,16 +68,19 @@ export function usePreviewViewport(
     setIsDragging(false)
   }, [])
 
-  const onWheel = useCallback(
-    (event: ReactWheelEvent<HTMLDivElement>) => {
-      event.preventDefault()
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
 
-      const container = event.currentTarget
+    const handleWheel = (event: WheelEvent) => {
+      event.preventDefault()
+      event.stopPropagation()
+
       const rect = container.getBoundingClientRect()
       const pointerX = event.clientX - rect.left
       const pointerY = event.clientY - rect.top
 
-      const currentScale = zoom / 100
+      const currentScale = zoomRef.current / 100
       const zoomFactor = event.deltaY < 0 ? 1.08 : 1 / 1.08
       const nextScale = clampZoom(Math.round(currentScale * zoomFactor * 100)) / 100
       const ratio = nextScale / currentScale
@@ -77,9 +90,11 @@ export function usePreviewViewport(
         y: pointerY - (pointerY - currentPan.y) * ratio,
       }))
       onZoomChange(Math.round(nextScale * 100))
-    },
-    [clampZoom, onZoomChange, zoom],
-  )
+    }
+
+    container.addEventListener('wheel', handleWheel, { passive: false })
+    return () => container.removeEventListener('wheel', handleWheel)
+  }, [clampZoom, containerRef, onZoomChange])
 
   const fitToView = useCallback(
     (container: HTMLElement | null, wrapper: HTMLElement | null) => {
@@ -116,7 +131,6 @@ export function usePreviewViewport(
     onPointerDown,
     onPointerMove,
     onPointerUp,
-    onWheel,
     fitToView,
     resetView,
   }

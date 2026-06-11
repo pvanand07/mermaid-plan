@@ -36,9 +36,8 @@ export function Preview({
     onPointerDown,
     onPointerMove,
     onPointerUp,
-    onWheel,
     fitToView,
-  } = usePreviewViewport(zoom, onZoomChange)
+  } = usePreviewViewport(zoom, onZoomChange, containerRef)
 
   const scheduleFitToView = useCallback(() => {
     requestAnimationFrame(() => {
@@ -131,7 +130,6 @@ export function Preview({
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerLeave={onPointerUp}
-        onWheel={onWheel}
       >
         <div
           className="preview-viewport"

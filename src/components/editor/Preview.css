@@ -73,6 +73,7 @@
   background-size: 20px 20px;
   background-color: #ffffff;
   overflow: hidden;
+  overscroll-behavior: none;
   position: relative;
   touch-action: none;
   cursor: grab;
