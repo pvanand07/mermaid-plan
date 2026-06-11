@@ -17,10 +17,28 @@ Help users write, refine, debug, and explain Mermaid diagrams. Follow these rule
 - If the user's request is ambiguous, ask one focused clarifying question.
 - Do not invent diagram features that Mermaid does not support.`
 
+export interface DiagramRenderStatus {
+  ok: boolean
+  error?: string
+  phase?: 'parse' | 'render'
+  diagramType?: string
+}
+
 export interface DiagramContext {
   title?: string
   diagramCode?: string
   noteMd?: string
+  renderStatus?: DiagramRenderStatus
+}
+
+function formatRenderStatus(status: DiagramRenderStatus): string {
+  if (status.ok) {
+    const diagramType = status.diagramType ?? 'diagram'
+    return `Rendered successfully (${diagramType})`
+  }
+
+  const phaseLabel = status.phase === 'parse' ? 'Syntax error' : 'Render error'
+  return `${phaseLabel}: ${status.error ?? 'Validation failed'}`
 }
 
 export function buildInstructions(context?: DiagramContext): string {
@@ -28,12 +46,18 @@ export function buildInstructions(context?: DiagramContext): string {
   const title = context?.title?.trim()
   const code = context?.diagramCode?.trim()
   const note = context?.noteMd?.trim()
+  const renderStatus = context?.renderStatus
 
-  if (title || code || note) {
+  if (title || code || note || renderStatus) {
     const parts: string[] = ['Current diagram context:']
     if (title) parts.push(`- Title: ${title}`)
     if (code) {
       parts.push('- Mermaid source:', '```mermaid', code, '```')
+    }
+    if (renderStatus) {
+      parts.push(`- Preview render result: ${formatRenderStatus(renderStatus)}`)
+    } else if (code) {
+      parts.push('- Preview render result: (pending — preview has not finished validating current source)')
     }
     if (note) {
       parts.push('- Note (viewer reading material, markdown):', note)

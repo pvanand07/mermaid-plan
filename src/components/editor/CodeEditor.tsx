@@ -45,6 +45,7 @@ export function CodeEditor({ panelMode, onPanelModeChange }: CodeEditorProps) {
     applyTemplate,
     validateDiagramCode,
     validationError,
+    previewRenderStatus,
   } = useEditor()
 
   const [aiOpen, setAiOpen] = useState(false)
@@ -67,6 +68,7 @@ export function CodeEditor({ panelMode, onPanelModeChange }: CodeEditorProps) {
     diagramTitle: title,
     diagramCode: code,
     noteMd,
+    previewRenderStatus,
     onDiagramUpdate: updateCode,
     onNoteUpdate: updateNote,
     onAgentDiagramSave: applyAgentDiagramUpdate,

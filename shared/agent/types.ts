@@ -3,11 +3,13 @@ import type {
   chatMessageSchema,
   chatRequestSchema,
   continueRequestSchema,
+  diagramRenderStatusSchema,
   toolResultSchema,
 } from './schemas.ts'
 
 export type ChatMessage = z.infer<typeof chatMessageSchema>
 export type AgentToolResult = z.infer<typeof toolResultSchema>
+export type DiagramRenderStatus = z.infer<typeof diagramRenderStatusSchema>
 export type AgentChatRequest = z.infer<typeof chatRequestSchema>
 export type AgentContinueRequest = z.infer<typeof continueRequestSchema>
 
@@ -15,6 +17,7 @@ export interface DiagramContextPayload {
   diagramCode?: string
   noteMd?: string
   diagramTitle?: string
+  diagramRenderStatus?: DiagramRenderStatus
 }
 
 export interface UpdateMermaidToolCallPayload {

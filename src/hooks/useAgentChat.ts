@@ -109,6 +109,7 @@ export interface UseAgentChatOptions {
   diagramTitle: string
   diagramCode: string
   noteMd: string
+  previewRenderStatus?: import('../lib/mermaid/validateDiagram').MermaidValidationResult | null
   onDiagramUpdate: (code: string) => void
   onNoteUpdate: (noteMd: string) => void
   onAgentDiagramSave?: (code: string, commitMessage?: string) => Promise<void>
@@ -121,6 +122,7 @@ export function useAgentChat({
   diagramTitle,
   diagramCode,
   noteMd,
+  previewRenderStatus,
   onDiagramUpdate,
   onNoteUpdate,
   onAgentDiagramSave,
@@ -138,6 +140,7 @@ export function useAgentChat({
   const diagramCodeRef = useRef(diagramCode)
   const noteMdRef = useRef(noteMd)
   const diagramTitleRef = useRef(diagramTitle)
+  const previewRenderStatusRef = useRef(previewRenderStatus)
   const messageIdRef = useRef(0)
 
   useEffect(() => {
@@ -151,6 +154,10 @@ export function useAgentChat({
   useEffect(() => {
     diagramTitleRef.current = diagramTitle
   }, [diagramTitle])
+
+  useEffect(() => {
+    previewRenderStatusRef.current = previewRenderStatus
+  }, [previewRenderStatus])
 
   const handleHydrate = useCallback((messages: ChatMessage[]) => {
     dispatch({ type: 'HYDRATE', messages })
@@ -174,11 +181,15 @@ export function useAgentChat({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [state.messages, state.isStreaming])
 
-  const buildAgentContext = () => ({
-    diagramCode: diagramCodeRef.current.trim() || undefined,
-    noteMd: noteMdRef.current.trim() || undefined,
-    diagramTitle: diagramTitleRef.current.trim() || undefined,
-  })
+  const buildAgentContext = () => {
+    const renderStatus = previewRenderStatusRef.current
+    return {
+      diagramCode: diagramCodeRef.current.trim() || undefined,
+      noteMd: noteMdRef.current.trim() || undefined,
+      diagramTitle: diagramTitleRef.current.trim() || undefined,
+      diagramRenderStatus: renderStatus ?? undefined,
+    }
+  }
 
   const createMessageId = (prefix: string) => {
     messageIdRef.current += 1

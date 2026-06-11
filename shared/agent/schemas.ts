@@ -12,11 +12,14 @@ export const toolResultSchema = z.object({
   diagramType: z.string().optional(),
 })
 
+export const diagramRenderStatusSchema = toolResultSchema
+
 export const chatRequestSchema = z.object({
   messages: z.array(chatMessageSchema).min(1),
   diagramCode: z.string().optional(),
   noteMd: z.string().optional(),
   diagramTitle: z.string().optional(),
+  diagramRenderStatus: diagramRenderStatusSchema.optional(),
   model: z.string().min(1).optional(),
 })
 
@@ -28,5 +31,6 @@ export const continueRequestSchema = z.object({
   diagramCode: z.string().optional(),
   noteMd: z.string().optional(),
   diagramTitle: z.string().optional(),
+  diagramRenderStatus: diagramRenderStatusSchema.optional(),
   model: z.string().min(1).optional(),
 })

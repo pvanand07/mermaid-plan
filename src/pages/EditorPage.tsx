@@ -27,10 +27,14 @@ function EditorSession({ record }: { record: DiagramRecord }) {
   const [validationError, setValidationError] = useState<
     Extract<MermaidValidationResult, { ok: false }> | null
   >(null)
+  const [previewRenderStatus, setPreviewRenderStatus] = useState<MermaidValidationResult | null>(
+    null,
+  )
 
   const handleRenderResult = useCallback((code: string, result: MermaidValidationResult) => {
     previewValidationRef.current = { code, result }
     if (code === previewCode) {
+      setPreviewRenderStatus(result)
       setValidationError(result.ok ? null : result)
     }
   }, [previewCode])
@@ -38,11 +42,13 @@ function EditorSession({ record }: { record: DiagramRecord }) {
   useEffect(() => {
     if (!previewCode.trim() || editor.code !== previewCode) {
       setValidationError(null)
+      setPreviewRenderStatus(null)
       return
     }
 
     const cached = previewValidationRef.current
     if (cached?.code === previewCode) {
+      setPreviewRenderStatus(cached.result)
       setValidationError(cached.result.ok ? null : cached.result)
     }
   }, [editor.code, previewCode])
@@ -60,8 +66,9 @@ function EditorSession({ record }: { record: DiagramRecord }) {
       previewValidationRef,
       validateDiagramCode,
       validationError,
+      previewRenderStatus,
     }),
-    [editor, folderPaths, previewCode, validateDiagramCode, validationError],
+    [editor, folderPaths, previewCode, validateDiagramCode, validationError, previewRenderStatus],
   )
 
   return (
