@@ -93,6 +93,12 @@ const rateLimitBuckets = {
   }),
 } as const
 
+function resolveSiteUrl(): string {
+  const siteUrl = process.env.KINDE_SITE_URL?.trim() || process.env.APP_URL?.trim()
+  if (siteUrl) return normalizeOrigin(siteUrl)
+  return 'http://localhost:5173'
+}
+
 export const config = {
   port: Number(process.env.PORT ?? 3001),
   host: process.env.HOST ?? '127.0.0.1',
@@ -100,9 +106,25 @@ export const config = {
   defaultModel: process.env.OPENROUTER_MODEL ?? 'openai/gpt-4o-mini',
   corsOrigins: resolveCorsOrigins(),
   trustProxy: parseBoolean(process.env.TRUST_PROXY, false),
+  isProduction: process.env.NODE_ENV === 'production',
   rateLimit: {
     enabled: parseBoolean(process.env.RATE_LIMIT_ENABLED, true),
     buckets: rateLimitBuckets,
+  },
+  kinde: {
+    clientId: process.env.KINDE_CLIENT_ID ?? '',
+    clientSecret: process.env.KINDE_CLIENT_SECRET ?? '',
+    issuerUrl: normalizeOrigin(process.env.KINDE_ISSUER_URL ?? 'https://elevatics.kinde.com'),
+    siteUrl: resolveSiteUrl(),
+    get redirectUrl() {
+      return `${this.siteUrl}/api/auth/callback`
+    },
+    get logoutRedirectUrl() {
+      return this.siteUrl
+    },
+    get isConfigured() {
+      return Boolean(this.clientId && this.clientSecret)
+    },
   },
   get isConfigured() {
     return Boolean(this.openRouterApiKey)

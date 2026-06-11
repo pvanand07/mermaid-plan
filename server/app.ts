@@ -3,6 +3,7 @@ import { cors } from 'hono/cors'
 import { config } from './config.js'
 import { applyTieredRateLimits } from './middleware/rateLimits.js'
 import { agentRoutes } from './routes/agent.js'
+import { authRoutes } from './routes/auth.js'
 
 export const app = new Hono()
 
@@ -14,6 +15,7 @@ app.use(
     origin: (origin) => (allowedOrigins.has(origin) ? origin : ''),
     allowMethods: ['GET', 'POST', 'OPTIONS'],
     allowHeaders: ['Content-Type'],
+    credentials: true,
     maxAge: 86_400,
   }),
 )
@@ -30,6 +32,8 @@ app.get('/api/health', (c) =>
     defaultModel: config.defaultModel,
   }),
 )
+
+app.route('/api/auth', authRoutes)
 
 app.route('/api/agent', agentRoutes)
 

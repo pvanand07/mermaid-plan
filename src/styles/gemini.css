@@ -1949,3 +1949,148 @@
   color: var(--gemini-text);
   border-bottom: 2px solid var(--gemini-primary);
 }
+
+/* Auth */
+
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  background:
+    radial-gradient(circle at top, rgba(99, 102, 241, 0.08), transparent 45%),
+    var(--gemini-bg);
+}
+
+.auth-card {
+  width: min(100%, 420px);
+  background: var(--gemini-surface);
+  border: 1px solid var(--gemini-border);
+  border-radius: var(--gemini-radius-lg);
+  box-shadow: var(--gemini-shadow-sm);
+  padding: 32px;
+}
+
+.auth-card-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.auth-card-header h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.auth-card-header p {
+  margin: 0;
+  color: var(--gemini-text-muted);
+}
+
+.auth-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-btn {
+  width: 100%;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.auth-footer,
+.auth-back {
+  margin: 16px 0 0;
+  text-align: center;
+  color: var(--gemini-text-muted);
+  font-size: 13px;
+}
+
+.auth-footer a,
+.auth-back a {
+  color: var(--gemini-primary);
+}
+
+.auth-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--gemini-border);
+}
+
+.auth-nav--collapsed .auth-user-text,
+.auth-nav--collapsed .sidebar-label {
+  display: none;
+}
+
+.auth-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.auth-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.auth-user-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.auth-user-name {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.auth-user-email {
+  font-size: 11px;
+  color: var(--gemini-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.auth-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--gemini-radius-md);
+  color: var(--gemini-text-muted);
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.auth-nav-link:hover {
+  background: var(--gemini-primary-soft);
+  color: var(--gemini-primary);
+}
+
+.auth-card--collapsed p,
+.auth-card--collapsed .pro-tip-action .sidebar-label,
+.auth-card--collapsed .pro-tip-action svg:last-child {
+  display: none;
+}
+
+.auth-card--collapsed .pro-tip-header .auth-user-name {
+  display: none;
+}

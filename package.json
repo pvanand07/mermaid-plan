@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.19.11",
+    "@kinde-oss/kinde-typescript-sdk": "^2.14.0",
     "@openrouter/agent": "^0.7.1",
     "dexie": "^4.4.3",
     "dexie-react-hooks": "^4.4.0",

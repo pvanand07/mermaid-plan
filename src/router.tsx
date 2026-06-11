@@ -7,6 +7,7 @@ import { normalizeFolderPath } from './lib/folders/pathUtils'
 import { EditorPage } from './pages/EditorPage'
 import { DbErrorPage } from './pages/errors/DbErrorPage'
 import { EditorErrorPage } from './pages/errors/EditorErrorPage'
+import { LoginPage } from './pages/LoginPage'
 import { MyDiagramsPage } from './pages/MyDiagramsPage'
 import { TemplatesPage } from './pages/TemplatesPage'
 import { AppShell } from './App'
@@ -42,6 +43,7 @@ async function diagramLoader({ params }: { params: { id?: string } }) {
 }
 
 export const router = createBrowserRouter([
+  { path: '/login', element: <LoginPage /> },
   {
     path: '/',
     element: (

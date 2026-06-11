@@ -8,12 +8,12 @@ import {
   LayoutTemplate,
   Plus,
   Settings,
-  Sparkles,
   Star,
 } from 'lucide-react'
 import { useSidebar } from '../hooks/useSidebar'
 import { cn } from '../lib/cn'
 import { Logo } from './Logo'
+import { AuthNav } from './AuthNav'
 
 const navItems = [
   { label: 'My Diagrams', icon: LayoutGrid, path: '/' },
@@ -96,17 +96,7 @@ export function AppSidebar() {
       </div>
 
       <div className="sidebar-footer">
-        <div className="pro-tip-card">
-          <div className="pro-tip-header">
-            <Sparkles size={16} className="icon-primary" />
-            <span className="sidebar-label">Unlock more</span>
-          </div>
-          <p className="sidebar-label">Get access to premium templates and features.</p>
-          <button type="button" className="pro-tip-action">
-            <span className="sidebar-label">Upgrade to Pro</span>
-            <ChevronRight size={14} />
-          </button>
-        </div>
+        <AuthNav collapsed={showCollapsed} />
 
         <div className="sidebar-footer-links">
           <button

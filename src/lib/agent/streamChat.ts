@@ -139,6 +139,7 @@ async function postAgentStream(
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     body: JSON.stringify(request),
     signal,
   })
