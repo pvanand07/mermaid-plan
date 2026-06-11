@@ -93,6 +93,14 @@ const rateLimitBuckets = {
   }),
 } as const
 
+function parseAdminEmails(value: string | undefined): string[] {
+  if (!value?.trim()) return []
+  return value
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean)
+}
+
 function resolveSiteUrl(): string {
   const siteUrl = process.env.KINDE_SITE_URL?.trim() || process.env.APP_URL?.trim()
   if (siteUrl) return normalizeOrigin(siteUrl)
@@ -102,6 +110,12 @@ function resolveSiteUrl(): string {
 export const config = {
   port: Number(process.env.PORT ?? 3001),
   host: process.env.HOST ?? '127.0.0.1',
+  sqlite: {
+    path: process.env.SQLITE_PATH ?? './data/mermaid-studio.db',
+  },
+  anonymousPlanId: process.env.ANONYMOUS_PLAN_ID ?? 'anonymous',
+  defaultUserPlanId: process.env.DEFAULT_USER_PLAN_ID ?? 'free',
+  adminEmails: parseAdminEmails(process.env.ADMIN_EMAILS),
   openRouterApiKey: process.env.OPENROUTER_API_KEY ?? '',
   defaultModel: process.env.OPENROUTER_MODEL ?? 'openai/gpt-4o-mini',
   corsOrigins: resolveCorsOrigins(),

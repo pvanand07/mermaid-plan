@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useStartNewDiagram } from '../hooks/useStartNewDiagram'
 import {
+  BarChart3,
   ChevronLeft,
   ChevronRight,
   HelpCircle,
@@ -10,6 +11,7 @@ import {
   Settings,
   Star,
 } from 'lucide-react'
+import { useAdminAccess } from '../hooks/useAdmin'
 import { useSidebar } from '../hooks/useSidebar'
 import { cn } from '../lib/cn'
 import { Logo } from './Logo'
@@ -22,6 +24,7 @@ const navItems = [
 
 export function AppSidebar() {
   const location = useLocation()
+  const { isAdmin } = useAdminAccess()
   const { collapsed, toggleCollapsed, mobileOpen, closeMobile, isMobile } = useSidebar()
   const { startNewDiagram, creating } = useStartNewDiagram()
   const showCollapsed = collapsed && !isMobile
@@ -66,7 +69,10 @@ export function AppSidebar() {
       </div>
 
       <nav className="sidebar-content sidebar-nav">
-        {navItems.map((item) => {
+        {[
+          ...navItems,
+          ...(isAdmin ? [{ label: 'Admin', icon: BarChart3, path: '/admin' as const }] : []),
+        ].map((item) => {
           const active =
             item.path === '/'
               ? location.pathname === '/' || location.pathname === '/diagrams'

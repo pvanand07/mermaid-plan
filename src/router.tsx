@@ -7,6 +7,7 @@ import { normalizeFolderPath } from './lib/folders/pathUtils'
 import { EditorPage } from './pages/EditorPage'
 import { DbErrorPage } from './pages/errors/DbErrorPage'
 import { EditorErrorPage } from './pages/errors/EditorErrorPage'
+import { AdminPage } from './pages/AdminPage'
 import { LoginPage } from './pages/LoginPage'
 import { MyDiagramsPage } from './pages/MyDiagramsPage'
 import { TemplatesPage } from './pages/TemplatesPage'
@@ -14,6 +15,18 @@ import { AppShell } from './App'
 
 async function rootLoader() {
   await ensureDbReady()
+  return null
+}
+
+async function adminLoader() {
+  const response = await fetch('/api/admin/me', { credentials: 'include' })
+  if (!response.ok) {
+    throw redirect('/')
+  }
+  const data = (await response.json()) as { isAdmin: boolean }
+  if (!data.isAdmin) {
+    throw redirect('/')
+  }
   return null
 }
 
@@ -57,6 +70,7 @@ export const router = createBrowserRouter([
       { index: true, element: <MyDiagramsPage /> },
       { path: 'diagrams', element: <Navigate to="/" replace /> },
       { path: 'templates', element: <TemplatesPage /> },
+      { path: 'admin', loader: adminLoader, element: <AdminPage /> },
       { path: 'editor', loader: newDiagramLoader },
       {
         path: 'editor/:id',

@@ -3,17 +3,22 @@ import { Hono } from 'hono'
 import { streamSSE } from 'hono/streaming'
 import { chatRequestSchema, continueRequestSchema } from '../../shared/agent/schemas.js'
 import { config } from '../config.js'
-import { applyTieredRateLimits } from '../middleware/rateLimits.js'
+import { normalizeAgentUsage } from '../agent/usage.js'
+import { applyPlanRateLimits } from '../middleware/rateLimits.js'
+import type { AppVariables } from '../middleware/resolveUser.js'
+import { clientIp } from '../middleware/clientIp.js'
 import { createEphemeralAccessor } from '../agent/ephemeralState.js'
 import { createAgentContinueRun, createAgentRun } from '../agent/runAgent.js'
 import { streamAgentResult } from '../agent/streamRun.js'
 import { isClientHandledTool } from '../agent/tools/clientTools.js'
+import { recordAgentUsage } from '../services/recordAgentUsage.js'
 import type {
   AgentChatRequest,
   AgentChatResponse,
   AgentContinueRequest,
   AgentToolCallPayload,
 } from '../types.js'
+import type { AgentUsageScope } from '../db/types.js'
 
 type ChatRequest = AgentChatRequest
 type ContinueRequest = AgentContinueRequest
@@ -45,14 +50,37 @@ function mapAgentError(error: unknown) {
   return { statusCode, message }
 }
 
-function streamAgent(c: Context, mode: 'chat' | 'continue', data: ChatRequest | ContinueRequest) {
+function safeRecordUsage(
+  c: Context<{ Variables: AppVariables }>,
+  scope: AgentUsageScope,
+  model: string,
+  usage: ReturnType<typeof normalizeAgentUsage>,
+) {
+  try {
+    recordAgentUsage({
+      userId: c.get('userId'),
+      scope,
+      model,
+      usage,
+      clientIp: clientIp(c),
+    })
+  } catch (error) {
+    console.error('[usage] Failed to record agent usage', error)
+  }
+}
+
+function streamAgent(
+  c: Context<{ Variables: AppVariables }>,
+  scope: 'stream' | 'continue',
+  data: ChatRequest | ContinueRequest,
+) {
   const accessor =
-    mode === 'continue'
+    scope === 'continue'
       ? createEphemeralAccessor((data as ContinueRequest).conversationState as never)
       : createEphemeralAccessor()
 
   const { result, model } =
-    mode === 'continue'
+    scope === 'continue'
       ? createAgentContinueRun(data as AgentContinueRequest, { state: accessor })
       : createAgentRun(data as ChatRequest, { state: accessor })
 
@@ -62,7 +90,8 @@ function streamAgent(c: Context, mode: 'chat' | 'continue', data: ChatRequest | 
         event: 'meta',
         data: JSON.stringify({ model }),
       })
-      await streamAgentResult(result, stream, accessor)
+      const outcome = await streamAgentResult(result, stream, accessor)
+      safeRecordUsage(c, scope, model, outcome.usage)
     } catch (error) {
       const mapped = mapAgentError(error)
       await stream.writeSSE({
@@ -73,12 +102,12 @@ function streamAgent(c: Context, mode: 'chat' | 'continue', data: ChatRequest | 
   })
 }
 
-export const agentRoutes = new Hono()
+export const agentRoutes = new Hono<{ Variables: AppVariables }>()
 
 if (config.rateLimit.enabled) {
-  applyTieredRateLimits(agentRoutes, '/chat', 'chat')
-  applyTieredRateLimits(agentRoutes, '/chat/stream', 'stream')
-  applyTieredRateLimits(agentRoutes, '/chat/continue', 'continue')
+  applyPlanRateLimits(agentRoutes, '/chat', 'chat')
+  applyPlanRateLimits(agentRoutes, '/chat/stream', 'stream')
+  applyPlanRateLimits(agentRoutes, '/chat/continue', 'continue')
 }
 
 agentRoutes.post('/chat', async (c) => {
@@ -97,6 +126,9 @@ agentRoutes.post('/chat', async (c) => {
     const toolCalls = await result.getToolCalls()
     const clientCall = toolCalls.find((call) => isClientHandledTool(call.name))
     const conversationState = clientCall ? await accessor.load() : undefined
+    const usage = normalizeAgentUsage(response.usage ?? undefined)
+
+    safeRecordUsage(c, 'chat', model, usage)
 
     const body: AgentChatResponse = {
       message: {
@@ -113,13 +145,7 @@ agentRoutes.post('/chat', async (c) => {
           } as AgentToolCallPayload)
         : undefined,
       conversationState,
-      usage: response.usage
-        ? {
-            inputTokens: response.usage.inputTokens,
-            outputTokens: response.usage.outputTokens,
-            totalTokens: response.usage.totalTokens,
-          }
-        : undefined,
+      usage,
     }
 
     return c.json(body)
@@ -137,7 +163,7 @@ agentRoutes.post('/chat/stream', async (c) => {
     return c.json({ error: 'Invalid request', details: parsed.error.flatten() }, 400)
   }
 
-  return streamAgent(c, 'chat', parsed.data)
+  return streamAgent(c, 'stream', parsed.data)
 })
 
 agentRoutes.post('/chat/continue', async (c) => {

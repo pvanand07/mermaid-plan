@@ -5,6 +5,9 @@ networks:
       config:
         - subnet: 10.200.0.0/24
 
+volumes:
+  agent-data:
+
 services:
   web:
     build:
@@ -26,8 +29,15 @@ services:
       APP_URL: ${APP_URL:?APP_URL is required}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?OPENROUTER_API_KEY is required}
       OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openai/gpt-4.1-mini}
+      KINDE_CLIENT_ID: ${KINDE_CLIENT_ID:-}
+      KINDE_CLIENT_SECRET: ${KINDE_CLIENT_SECRET:-}
+      KINDE_ISSUER_URL: ${KINDE_ISSUER_URL:-https://elevatics.kinde.com}
+      KINDE_SITE_URL: ${KINDE_SITE_URL:-}
+      SQLITE_PATH: /app/data/mermaid-studio.db
       HOST: 0.0.0.0
       PORT: 3001
       TRUST_PROXY: ${TRUST_PROXY:-true}
       RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+    volumes:
+      - agent-data:/app/data
     restart: unless-stopped

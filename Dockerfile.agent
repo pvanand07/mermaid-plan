@@ -24,6 +24,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3001
+ENV SQLITE_PATH=/app/data/mermaid-studio.db
 
 COPY package.json pnpm-lock.yaml ./
 RUN corepack enable && corepack prepare pnpm@10 --activate \
@@ -31,6 +32,7 @@ RUN corepack enable && corepack prepare pnpm@10 --activate \
   && pnpm store prune
 
 COPY --from=build /app/dist-server ./dist-server
+COPY --from=build /app/server/db/migrations ./dist-server/server/db/migrations
 
 EXPOSE 3001
 

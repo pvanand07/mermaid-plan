@@ -1,18 +1,16 @@
 import type { ModelResult, Tool, StateAccessor } from '@openrouter/agent'
 import type { SSEStreamingApi } from 'hono/streaming'
+import type { AgentUsageRecord } from '../../shared/agent/usage.js'
 import type { AgentToolCallPayload } from '../types.js'
 import { isClientHandledTool } from './tools/clientTools.js'
 import type { MERMAID_AGENT_TOOLS } from './tools/index.js'
+import { normalizeAgentUsage } from './usage.js'
 
 export interface AgentStreamOutcome {
   content: string
   paused: boolean
   toolCall?: AgentToolCallPayload
-  usage?: {
-    inputTokens?: number
-    outputTokens?: number
-    totalTokens?: number
-  }
+  usage?: AgentUsageRecord
 }
 
 export async function streamAgentResult(
@@ -55,13 +53,7 @@ export async function streamAgentResult(
   await Promise.all([textTask, toolTask])
 
   const response = await result.getResponse()
-  const usage = response.usage
-    ? {
-        inputTokens: response.usage.inputTokens,
-        outputTokens: response.usage.outputTokens,
-        totalTokens: response.usage.totalTokens,
-      }
-    : undefined
+  const usage = normalizeAgentUsage(response.usage ?? undefined)
 
   if (clientToolCall) {
     const conversationState = await accessor.load()

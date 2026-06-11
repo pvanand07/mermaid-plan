@@ -6,6 +6,9 @@ import type {
   diagramRenderStatusSchema,
   toolResultSchema,
 } from './schemas.ts'
+import type { AgentUsageRecord } from './usage.ts'
+
+export type { AgentUsageRecord } from './usage.ts'
 
 export type ChatMessage = z.infer<typeof chatMessageSchema>
 export type AgentToolResult = z.infer<typeof toolResultSchema>
@@ -46,9 +49,5 @@ export interface AgentChatResponse {
   paused?: boolean
   toolCall?: AgentToolCallPayload
   conversationState?: unknown
-  usage?: {
-    inputTokens?: number
-    outputTokens?: number
-    totalTokens?: number
-  }
+  usage?: AgentUsageRecord
 }

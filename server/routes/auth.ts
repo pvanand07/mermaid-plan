@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { config } from '../config.js'
+import { upsertKindeUser } from '../db/userRepository.js'
 import { kindeClient } from '../kinde/client.js'
 import { createSessionManager } from '../kinde/sessionManager.js'
 
@@ -37,6 +38,18 @@ authRoutes.get('/callback', async (c) => {
   const sessionManager = createSessionManager(c)
   const url = new URL(c.req.url)
   await kindeClient.handleRedirectToApp(sessionManager, url)
+
+  if (await kindeClient.isAuthenticated(sessionManager)) {
+    const profile = await kindeClient.getUserProfile(sessionManager)
+    upsertKindeUser({
+      id: profile.id,
+      email: profile.email,
+      given_name: profile.given_name,
+      family_name: profile.family_name,
+      picture: profile.picture,
+    })
+  }
+
   return c.redirect(config.kinde.logoutRedirectUrl)
 })
 
@@ -61,6 +74,14 @@ authRoutes.get('/me', async (c) => {
   }
 
   const profile = await kindeClient.getUserProfile(sessionManager)
+  const user = upsertKindeUser({
+    id: profile.id,
+    email: profile.email,
+    given_name: profile.given_name,
+    family_name: profile.family_name,
+    picture: profile.picture,
+  })
+
   return c.json({
     authEnabled: true,
     authenticated: true,
@@ -70,6 +91,7 @@ authRoutes.get('/me', async (c) => {
       givenName: profile.given_name,
       familyName: profile.family_name,
       picture: profile.picture,
+      planId: user.plan_id,
     },
   })
 })
