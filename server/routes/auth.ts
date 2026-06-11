@@ -39,17 +39,6 @@ authRoutes.get('/callback', async (c) => {
   const url = new URL(c.req.url)
   await kindeClient.handleRedirectToApp(sessionManager, url)
 
-  if (await kindeClient.isAuthenticated(sessionManager)) {
-    const profile = await kindeClient.getUserProfile(sessionManager)
-    upsertKindeUser({
-      id: profile.id,
-      email: profile.email,
-      given_name: profile.given_name,
-      family_name: profile.family_name,
-      picture: profile.picture,
-    })
-  }
-
   return c.redirect(config.kinde.logoutRedirectUrl)
 })
 
@@ -73,7 +62,14 @@ authRoutes.get('/me', async (c) => {
     return c.json({ authEnabled: true, authenticated: false })
   }
 
-  const profile = await kindeClient.getUserProfile(sessionManager)
+  let profile
+  try {
+    profile = await kindeClient.getUserProfile(sessionManager)
+  } catch (error) {
+    console.warn('[auth] Failed to load Kinde profile', error)
+    return c.json({ authEnabled: true, authenticated: false })
+  }
+
   const user = upsertKindeUser({
     id: profile.id,
     email: profile.email,

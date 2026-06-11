@@ -26,17 +26,26 @@ export const resolveUser = createMiddleware<{ Variables: AppVariables }>(async (
     const authenticated = await kindeClient.isAuthenticated(sessionManager)
 
     if (authenticated) {
-      const profile = await kindeClient.getUserProfile(sessionManager)
-      const user = upsertKindeUser({
-        id: profile.id,
-        email: profile.email,
-        given_name: profile.given_name,
-        family_name: profile.family_name,
-        picture: profile.picture,
-      })
-      userId = user.id
-      planId = user.plan_id
-      isAnonymous = false
+      try {
+        const profile = await kindeClient.getUserProfile(sessionManager)
+        const user = upsertKindeUser({
+          id: profile.id,
+          email: profile.email,
+          given_name: profile.given_name,
+          family_name: profile.family_name,
+          picture: profile.picture,
+        })
+        userId = user.id
+        planId = user.plan_id
+        isAnonymous = false
+      } catch (error) {
+        console.warn('[auth] Failed to resolve Kinde user profile', error)
+        const ip = clientIp(c)
+        const user = getOrCreateAnonymousUser(hashIp(ip))
+        userId = user.id
+        planId = user.plan_id
+        isAnonymous = true
+      }
     } else {
       const ip = clientIp(c)
       const user = getOrCreateAnonymousUser(hashIp(ip))
