@@ -1,97 +1,71 @@
-import { useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useParams } from 'react-router-dom'
+import { useLoaderData } from 'react-router-dom'
 import { AppLayout } from '../components/AppLayout'
 import { CodeEditor } from '../components/editor/CodeEditor'
 import type { EditorPanelMode } from '../components/editor/CodeEditor'
 import { Preview } from '../components/editor/Preview'
 import { TopBar } from '../components/editor/TopBar'
-import { useDbReady } from '../hooks/useDbReady'
+import { EditorProvider } from '../context/EditorContext'
+import type { EditorContextValue } from '../context/editor-context'
+import type { DiagramRecord } from '../data/types'
 import { useDebouncedPreview } from '../hooks/useDebouncedPreview'
 import { useDiagramEditor } from '../hooks/useDiagramEditor'
 import { listAllFolderPaths } from '../lib/db/folderRepository'
+import type { PreviewValidationCache } from '../lib/mermaid/previewValidation'
+import { resolveDiagramValidation } from '../lib/mermaid/previewValidation'
+import type { MermaidValidationResult } from '../lib/mermaid/validateDiagram'
 
-function EditorSession({ id }: { id: string }) {
-  const { dbError, loading } = useDbReady()
-
-  const folderPaths = useLiveQuery(
-    () => (!dbError ? listAllFolderPaths() : []),
-    [dbError],
-    [],
-  )
-
-  const editor = useDiagramEditor({ id })
+function EditorSession({ record }: { record: DiagramRecord }) {
+  const editor = useDiagramEditor({ id: record.id, initial: record })
+  const folderPaths = useLiveQuery(() => listAllFolderPaths(), [], [])
 
   const [panelMode, setPanelMode] = useState<EditorPanelMode>('code')
   const [zoom, setZoom] = useState(100)
   const previewCode = useDebouncedPreview(editor.code)
+  const previewValidationRef = useRef<PreviewValidationCache | null>(null)
 
-  if (loading || !editor.loaded) {
-    return (
-      <AppLayout embedMobileMenu>
-        <div className="editor-loading">Loading diagram…</div>
-      </AppLayout>
-    )
-  }
+  const handleRenderResult = useCallback((code: string, result: MermaidValidationResult) => {
+    previewValidationRef.current = { code, result }
+  }, [])
 
-  if (editor.notFound) {
-    return (
-      <AppLayout embedMobileMenu>
-        <div className="editor-loading">Diagram not found.</div>
-      </AppLayout>
-    )
-  }
+  const validateDiagramCode = useCallback(
+    (code: string) => resolveDiagramValidation(code, previewCode, previewValidationRef),
+    [previewCode],
+  )
+
+  const contextValue = useMemo(
+    (): EditorContextValue => ({
+      ...editor,
+      folderPaths: folderPaths ?? [],
+      previewCode,
+      previewValidationRef,
+      validateDiagramCode,
+    }),
+    [editor, folderPaths, previewCode, validateDiagramCode],
+  )
 
   return (
-    <AppLayout embedMobileMenu>
-      {(dbError || editor.dbError) && (
-        <div className="db-error-banner">
-          Storage unavailable — changes may not persist. {dbError ?? editor.dbError}
+    <EditorProvider value={contextValue}>
+      <AppLayout embedMobileMenu>
+        <TopBar />
+        <div className="workspace">
+          <CodeEditor panelMode={panelMode} onPanelModeChange={setPanelMode} />
+          <Preview
+            previewCode={previewCode}
+            exportCode={editor.code}
+            filename={editor.title}
+            zoom={zoom}
+            onZoomChange={setZoom}
+            onRenderResult={handleRenderResult}
+          />
         </div>
-      )}
-      <TopBar
-        title={editor.title}
-        code={editor.code}
-        saveStatus={editor.saveStatus}
-        folderPath={editor.folderPath}
-        folderPaths={folderPaths ?? []}
-        versions={editor.versions}
-        onTitleChange={editor.setTitle}
-        onFolderChange={editor.setFolderPath}
-        onRestoreVersion={editor.restoreVersion}
-      />
-      <div className="workspace">
-        <CodeEditor
-          diagramId={editor.diagramId}
-          diagramTitle={editor.title}
-          code={editor.code}
-          setCode={editor.setCode}
-          onFormat={() => editor.setCode(editor.code.trim())}
-          onCopy={() => void navigator.clipboard.writeText(editor.code)}
-          panelMode={panelMode}
-          onPanelModeChange={setPanelMode}
-          noteMd={editor.noteMd}
-          setNoteMd={editor.setNoteMd}
-          onAgentDiagramSave={editor.applyAgentDiagramUpdate}
-          onAgentNoteSave={editor.applyAgentNoteUpdate}
-          onApplyTemplate={editor.applyTemplate}
-        />
-        <Preview
-          previewCode={previewCode}
-          exportCode={editor.code}
-          filename={editor.title}
-          zoom={zoom}
-          onZoomChange={setZoom}
-        />
-      </div>
-    </AppLayout>
+      </AppLayout>
+    </EditorProvider>
   )
 }
 
 export function EditorPage() {
-  const { id } = useParams()
-
-  if (!id) return null
-
-  return <EditorSession key={id} id={id} />
+  const record = useLoaderData() as DiagramRecord
+  return <EditorSession key={record.id} record={record} />
 }

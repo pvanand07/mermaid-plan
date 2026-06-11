@@ -1,7 +1,8 @@
-import type { ModelResult, Tool } from '@openrouter/agent'
+import type { ModelResult, Tool, StateAccessor } from '@openrouter/agent'
 import type { SSEStreamingApi } from 'hono/streaming'
 import type { AgentToolCallPayload } from '../types.js'
 import { isClientHandledTool } from './tools/clientTools.js'
+import type { MERMAID_AGENT_TOOLS } from './tools/index.js'
 
 export interface AgentStreamOutcome {
   content: string
@@ -17,7 +18,7 @@ export interface AgentStreamOutcome {
 export async function streamAgentResult(
   result: ModelResult<readonly Tool[]>,
   stream: SSEStreamingApi,
-  sessionId: string,
+  accessor: StateAccessor<typeof MERMAID_AGENT_TOOLS>,
 ): Promise<AgentStreamOutcome> {
   let content = ''
   let clientToolCall: AgentToolCallPayload | undefined
@@ -63,12 +64,13 @@ export async function streamAgentResult(
     : undefined
 
   if (clientToolCall) {
+    const conversationState = await accessor.load()
     await stream.writeSSE({
       event: 'paused',
       data: JSON.stringify({
-        sessionId,
         toolCallId: clientToolCall.id,
         reason: 'awaiting_tool_result',
+        conversationState,
       }),
     })
 

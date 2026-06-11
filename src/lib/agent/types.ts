@@ -1,23 +1,19 @@
-export type AgentChatRole = 'user' | 'assistant'
+import type {
+  AgentChatRequest,
+  AgentContinueRequest,
+  AgentToolResult,
+  ChatMessage,
+  DiagramContextPayload,
+} from '../../../shared/agent/types.ts'
 
-export interface AgentChatMessage {
-  role: AgentChatRole
-  content: string
-}
+export type AgentChatRole = ChatMessage['role']
+export type AgentChatMessage = ChatMessage
+export type MermaidToolResult = AgentToolResult & { phase?: 'parse' | 'render'; diagramType?: string }
+export type NoteToolResult = AgentToolResult
 
-export interface MermaidToolResult {
-  ok: boolean
-  error?: string
-  phase?: 'parse' | 'render'
-  diagramType?: string
-}
+export type { AgentToolResult, AgentContinueRequest, DiagramContextPayload }
 
-export interface NoteToolResult {
-  ok: boolean
-  error?: string
-}
-
-export type AgentToolResult = MermaidToolResult | NoteToolResult
+export type AgentStreamRequest = AgentChatRequest
 
 export interface UpdateMermaidToolCall {
   id: string
@@ -39,27 +35,8 @@ export interface UpdateNoteToolCall {
 
 export type AgentToolCall = UpdateMermaidToolCall | UpdateNoteToolCall
 
-export interface DiagramContextPayload {
-  diagramCode?: string
-  noteMd?: string
-  diagramTitle?: string
-}
-
-export interface AgentStreamRequest extends DiagramContextPayload {
-  messages: AgentChatMessage[]
-  model?: string
-}
-
-export interface AgentContinueRequest extends DiagramContextPayload {
-  sessionId: string
-  toolCallId: string
-  toolCallName: 'update_mermaid' | 'update_note'
-  toolResult: AgentToolResult
-  model?: string
-}
-
 export interface AgentStreamPauseInfo {
-  sessionId: string
   toolCallId: string
   toolCall: AgentToolCall
+  conversationState: unknown
 }

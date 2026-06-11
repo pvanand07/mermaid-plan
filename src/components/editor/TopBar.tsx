@@ -1,41 +1,30 @@
 import { useState } from 'react'
 import { AlertCircle, CheckCircle2, Loader2, MoreVertical, Pencil } from 'lucide-react'
-import type { DiagramVersionRecord } from '../../data/types'
-import type { SaveStatus } from '../../hooks/useDiagramEditor'
+import { useEditor } from '../../hooks/useEditor'
 import { MobileMenuButton } from '../MobileMenuButton'
 import { ExportDropdown } from './ExportDropdown'
 import { FolderSelect } from './FolderSelect'
 import { VersionHistoryPanel } from './VersionHistoryPanel'
 
-interface TopBarProps {
-  title: string
-  code: string
-  saveStatus: SaveStatus
-  folderPath: string
-  folderPaths: string[]
-  versions: DiagramVersionRecord[]
-  onTitleChange: (title: string) => void
-  onFolderChange: (folderPath: string) => void
-  onRestoreVersion: (versionId: string) => void
-}
+export function TopBar() {
+  const {
+    title,
+    code,
+    saveStatus,
+    folderPath,
+    folderPaths,
+    versions,
+    setTitle,
+    setFolderPath,
+    restoreVersion,
+  } = useEditor()
 
-export function TopBar({
-  title,
-  code,
-  saveStatus,
-  folderPath,
-  folderPaths,
-  versions,
-  onTitleChange,
-  onFolderChange,
-  onRestoreVersion,
-}: TopBarProps) {
   const [editingTitle, setEditingTitle] = useState(false)
   const [draftTitle, setDraftTitle] = useState(title)
 
   const commitTitle = () => {
     const trimmed = draftTitle.trim() || 'Untitled'
-    onTitleChange(trimmed)
+    setTitle(trimmed)
     setEditingTitle(false)
   }
 
@@ -93,7 +82,7 @@ export function TopBar({
             <FolderSelect
               value={folderPath}
               folderPaths={folderPaths}
-              onChange={onFolderChange}
+              onChange={setFolderPath}
             />
             <div className={`saved-status saved-status--${saveStatus}`}>
               <SaveIcon
@@ -113,7 +102,7 @@ export function TopBar({
       </div>
 
       <div className="topbar-right">
-        <VersionHistoryPanel versions={versions} onRestore={onRestoreVersion} />
+        <VersionHistoryPanel versions={versions} onRestore={restoreVersion} />
         <ExportDropdown code={code} filename={title} variant="topbar" />
         <button type="button" className="btn-icon-only">
           <MoreVertical size={16} />

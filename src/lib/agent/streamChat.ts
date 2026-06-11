@@ -1,3 +1,4 @@
+import { createParser, type EventSourceMessage } from 'eventsource-parser'
 import type {
   AgentContinueRequest,
   AgentStreamPauseInfo,
@@ -22,88 +23,59 @@ interface StreamHandlers {
   onError?: (message: string) => void
 }
 
-interface StreamProcessResult {
-  finished: boolean
-  paused?: AgentStreamPauseInfo
-}
+type StreamEventResult = AgentStreamPauseInfo | 'done' | undefined
 
-function parseSseBlock(block: string): { event: string; data: string } | null {
-  let event = 'message'
-  const dataLines: string[] = []
+function handleSseEvent(
+  event: EventSourceMessage,
+  handlers: StreamHandlers,
+  state: { lastToolCall?: AgentToolCall },
+): StreamEventResult {
+  const eventName = event.event || 'message'
 
-  for (const line of block.split('\n')) {
-    if (line.startsWith('event:')) {
-      event = line.slice(6).trim()
-    } else if (line.startsWith('data:')) {
-      dataLines.push(line.slice(5).trim())
-    }
+  if (eventName === 'text') {
+    const payload = JSON.parse(event.data) as { delta?: string }
+    if (payload.delta) handlers.onDelta(payload.delta)
+    return undefined
   }
 
-  if (dataLines.length === 0) return null
-  return { event, data: dataLines.join('\n') }
-}
+  if (eventName === 'tool_call') {
+    const payload = JSON.parse(event.data) as AgentToolCall
+    state.lastToolCall = payload
+    handlers.onToolCall?.(payload)
+    return undefined
+  }
 
-function processSseBuffer(
-  buffer: string,
-  handlers: StreamHandlers,
-  state: { lastToolCall?: AgentToolCall; sessionId?: string },
-): { rest: string; result?: StreamProcessResult } {
-  let rest = buffer
-  let boundary = rest.indexOf('\n\n')
+  if (eventName === 'paused') {
+    const payload = JSON.parse(event.data) as {
+      toolCallId?: string
+      conversationState?: unknown
+    }
+    const toolCall = state.lastToolCall
 
-  while (boundary !== -1) {
-    const block = rest.slice(0, boundary)
-    rest = rest.slice(boundary + 2)
-    const parsed = parseSseBlock(block)
-
-    if (parsed) {
-      if (parsed.event === 'text') {
-        const payload = JSON.parse(parsed.data) as { delta?: string }
-        if (payload.delta) handlers.onDelta(payload.delta)
-      } else if (parsed.event === 'meta') {
-        const payload = JSON.parse(parsed.data) as { sessionId?: string }
-        if (payload.sessionId) state.sessionId = payload.sessionId
-      } else if (parsed.event === 'tool_call') {
-        const payload = JSON.parse(parsed.data) as AgentToolCall
-        state.lastToolCall = payload
-        handlers.onToolCall?.(payload)
-      } else if (parsed.event === 'paused') {
-        const payload = JSON.parse(parsed.data) as {
-          sessionId?: string
-          toolCallId?: string
-        }
-        const sessionId = payload.sessionId ?? state.sessionId
-        const toolCall = state.lastToolCall
-
-        if (sessionId && payload.toolCallId && toolCall) {
-          return {
-            rest,
-            result: {
-              finished: true,
-              paused: {
-                sessionId,
-                toolCallId: payload.toolCallId,
-                toolCall,
-              },
-            },
-          }
-        }
-      } else if (parsed.event === 'done') {
-        const payload = JSON.parse(parsed.data) as { message?: { content?: string } }
-        handlers.onDone?.(payload.message?.content ?? '')
-        return { rest, result: { finished: true } }
-      } else if (parsed.event === 'error') {
-        const payload = JSON.parse(parsed.data) as { error?: string }
-        const message = payload.error ?? 'Agent request failed'
-        handlers.onError?.(message)
-        throw new AgentChatError(message)
+    if (payload.toolCallId && toolCall && payload.conversationState !== undefined) {
+      return {
+        toolCallId: payload.toolCallId,
+        toolCall,
+        conversationState: payload.conversationState,
       }
     }
-
-    boundary = rest.indexOf('\n\n')
+    return undefined
   }
 
-  return { rest }
+  if (eventName === 'done') {
+    const payload = JSON.parse(event.data) as { message?: { content?: string } }
+    handlers.onDone?.(payload.message?.content ?? '')
+    return 'done'
+  }
+
+  if (eventName === 'error') {
+    const payload = JSON.parse(event.data) as { error?: string }
+    const message = payload.error ?? 'Agent request failed'
+    handlers.onError?.(message)
+    throw new AgentChatError(message)
+  }
+
+  return undefined
 }
 
 async function consumeSseStream(
@@ -113,8 +85,20 @@ async function consumeSseStream(
 ): Promise<AgentStreamPauseInfo | undefined> {
   const reader = body.getReader()
   const decoder = new TextDecoder()
-  let buffer = ''
-  const state: { lastToolCall?: AgentToolCall; sessionId?: string } = {}
+  const state: { lastToolCall?: AgentToolCall } = {}
+  let pauseInfo: AgentStreamPauseInfo | undefined
+  let finished = false
+
+  const parser = createParser({
+    onEvent(event) {
+      const result = handleSseEvent(event, handlers, state)
+      if (result === 'done') {
+        finished = true
+      } else if (result) {
+        pauseInfo = result
+      }
+    },
+  })
 
   try {
     while (true) {
@@ -125,30 +109,24 @@ async function consumeSseStream(
 
       const { done, value } = await reader.read()
       if (value) {
-        buffer += decoder.decode(value, { stream: true })
+        parser.feed(decoder.decode(value, { stream: !done }))
       }
 
-      const processed = processSseBuffer(buffer, handlers, state)
-      buffer = processed.rest
-
-      if (processed.result?.finished) {
+      if (pauseInfo || finished) {
         await reader.cancel()
-        return processed.result.paused
+        return pauseInfo
       }
 
       if (done) {
-        buffer += decoder.decode()
-        const final = processSseBuffer(buffer, handlers, state)
-        if (final.result?.finished) {
-          await reader.cancel()
-          return final.result.paused
-        }
-        return undefined
+        parser.feed(decoder.decode())
+        break
       }
     }
   } finally {
     reader.releaseLock()
   }
+
+  return pauseInfo
 }
 
 async function postAgentStream(

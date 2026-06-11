@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Hand, Maximize, Minimize2, Minus, Plus, RotateCcw, Share2 } from 'lucide-react'
 import { ExportDropdown } from './ExportDropdown'
 import { usePreviewViewport } from '../../hooks/usePreviewViewport'
+import type { MermaidValidationResult } from '../../lib/mermaid/validateDiagram'
 import { MermaidRender } from '../MermaidRender'
 import './Preview.css'
 
@@ -11,9 +12,17 @@ interface PreviewProps {
   filename: string
   zoom: number
   onZoomChange: (zoom: number) => void
+  onRenderResult?: (code: string, result: MermaidValidationResult) => void
 }
 
-export function Preview({ previewCode, exportCode, filename, zoom, onZoomChange }: PreviewProps) {
+export function Preview({
+  previewCode,
+  exportCode,
+  filename,
+  zoom,
+  onZoomChange,
+  onRenderResult,
+}: PreviewProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -44,6 +53,13 @@ export function Preview({ previewCode, exportCode, filename, zoom, onZoomChange 
     fitOnNextRenderRef.current = false
     scheduleFitToView()
   }, [scheduleFitToView])
+
+  const handleRenderResult = useCallback(
+    (result: MermaidValidationResult) => {
+      onRenderResult?.(previewCode, result)
+    },
+    [onRenderResult, previewCode],
+  )
 
   const handleResetView = useCallback(() => {
     scheduleFitToView()
@@ -125,7 +141,11 @@ export function Preview({ previewCode, exportCode, filename, zoom, onZoomChange 
         >
           <div ref={wrapperRef} className="mermaid-wrapper">
             {previewCode.trim() ? (
-              <MermaidRender code={previewCode} onRendered={handleRendered} />
+              <MermaidRender
+                code={previewCode}
+                onRendered={handleRendered}
+                onResult={handleRenderResult}
+              />
             ) : (
               <div className="preview-empty">
                 <p className="preview-empty-title">No diagram yet</p>

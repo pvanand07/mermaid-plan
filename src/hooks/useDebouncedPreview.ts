@@ -1,12 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useDebouncedValue } from './useDebouncedValue'
 
 export function useDebouncedPreview(code: string, delay = 300) {
-  const [previewCode, setPreviewCode] = useState(code)
-
-  useEffect(() => {
-    const timer = setTimeout(() => setPreviewCode(code), delay)
-    return () => clearTimeout(timer)
-  }, [code, delay])
-
-  return previewCode
+  return useDebouncedValue(code, delay)
 }

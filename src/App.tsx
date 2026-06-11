@@ -1,31 +1,7 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { SidebarProvider } from './context/SidebarContext'
-import { MyDiagramsPage } from './pages/MyDiagramsPage'
-import { TemplatesPage } from './pages/TemplatesPage'
-import { EditorPage } from './pages/EditorPage'
-import { NewEditorRedirect } from './pages/NewEditorRedirect'
+import { Outlet } from 'react-router-dom'
 
-const redirects: Record<string, string> = {
-  '/diagrams': '/',
-  '/examples': '/templates',
+export function AppShell() {
+  return <Outlet />
 }
 
-function App() {
-  return (
-    <BrowserRouter>
-      <SidebarProvider>
-        <Routes>
-          <Route path="/" element={<MyDiagramsPage />} />
-          {Object.entries(redirects).map(([from, to]) => (
-            <Route key={from} path={from} element={<Navigate to={to} replace />} />
-          ))}
-          <Route path="/templates" element={<TemplatesPage />} />
-          <Route path="/editor" element={<NewEditorRedirect />} />
-          <Route path="/editor/:id" element={<EditorPage />} />
-        </Routes>
-      </SidebarProvider>
-    </BrowserRouter>
-  )
-}
-
-export default App
+export default AppShell

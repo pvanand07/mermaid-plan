@@ -6,9 +6,10 @@ export type MermaidValidationResult =
   | { ok: true; diagramType: string }
   | { ok: false; phase: 'parse' | 'render'; error: string }
 
-export async function validateMermaidDiagram(code: string): Promise<MermaidValidationResult> {
+export async function parseMermaidSyntax(code: string): Promise<MermaidValidationResult> {
   try {
     await mermaid.parse(code)
+    return { ok: true, diagramType: detectDiagramType(code) }
   } catch (error) {
     return {
       ok: false,
@@ -16,11 +17,16 @@ export async function validateMermaidDiagram(code: string): Promise<MermaidValid
       error: error instanceof Error ? error.message : 'Invalid syntax',
     }
   }
+}
+
+export async function validateMermaidDiagram(code: string): Promise<MermaidValidationResult> {
+  const parseResult = await parseMermaidSyntax(code)
+  if (!parseResult.ok) return parseResult
 
   const id = `validate-${Date.now()}`
   try {
     await mermaid.render(id, code)
-    return { ok: true, diagramType: detectDiagramType(code) }
+    return { ok: true, diagramType: parseResult.diagramType }
   } catch (error) {
     return {
       ok: false,

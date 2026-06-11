@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react'
 import { AlignLeft, CheckCircle2, Copy, Eye, Pencil, Sparkles } from 'lucide-react'
 import type { Template } from '../../data/types'
-import { formatValidationMessage, validateMermaidDiagram } from '../../lib/mermaid/validateDiagram'
+import { useEditor } from '../../hooks/useEditor'
+import { formatValidationMessage } from '../../lib/mermaid/validateDiagram'
 import { cn } from '../../lib/cn'
 import { AiPanel } from './AiPanel'
 import { NoteEditor } from './NoteEditor'
@@ -12,36 +13,24 @@ export type EditorPanelMode = 'code' | 'note'
 export type NoteView = 'edit' | 'preview'
 
 interface CodeEditorProps {
-  diagramId: string
-  diagramTitle: string
-  code: string
-  setCode: (code: string) => void
-  onFormat: () => void
-  onCopy: () => void
   panelMode: EditorPanelMode
   onPanelModeChange: (mode: EditorPanelMode) => void
-  noteMd: string
-  setNoteMd: (value: string) => void
-  onAgentDiagramSave?: (code: string, commitMessage?: string) => Promise<void>
-  onAgentNoteSave?: (noteMd: string, commitMessage?: string) => Promise<void>
-  onApplyTemplate?: (template: Template) => void
 }
 
-export function CodeEditor({
-  diagramId,
-  diagramTitle,
-  code,
-  setCode,
-  onFormat,
-  onCopy,
-  panelMode,
-  onPanelModeChange,
-  noteMd,
-  setNoteMd,
-  onAgentDiagramSave,
-  onAgentNoteSave,
-  onApplyTemplate,
-}: CodeEditorProps) {
+export function CodeEditor({ panelMode, onPanelModeChange }: CodeEditorProps) {
+  const {
+    diagramId,
+    title,
+    code,
+    setCode,
+    noteMd,
+    setNoteMd,
+    applyAgentDiagramUpdate,
+    applyAgentNoteUpdate,
+    applyTemplate,
+    validateDiagramCode,
+  } = useEditor()
+
   const [aiOpen, setAiOpen] = useState(false)
   const [noteView, setNoteView] = useState<NoteView>('edit')
   const [validateMessage, setValidateMessage] = useState<string | null>(null)
@@ -62,7 +51,7 @@ export function CodeEditor({
   }
 
   const handleValidate = async () => {
-    const result = await validateMermaidDiagram(code)
+    const result = await validateDiagramCode(code)
     setValidateOk(result.ok)
     setValidateMessage(result.ok ? 'No issues detected' : formatValidationMessage(result))
   }
@@ -77,7 +66,7 @@ export function CodeEditor({
     }
     setValidateOk(true)
     setValidateMessage(null)
-    onApplyTemplate?.(template)
+    applyTemplate(template)
   }
 
   const lineCount = code.split('\n').length
@@ -88,13 +77,14 @@ export function CodeEditor({
       <AiPanel
         open={aiOpen}
         diagramId={diagramId}
-        diagramTitle={diagramTitle}
+        diagramTitle={title}
         diagramCode={code}
         noteMd={noteMd}
         onDiagramUpdate={updateCode}
         onNoteUpdate={updateNote}
-        onAgentDiagramSave={onAgentDiagramSave}
-        onAgentNoteSave={onAgentNoteSave}
+        onAgentDiagramSave={applyAgentDiagramUpdate}
+        onAgentNoteSave={applyAgentNoteUpdate}
+        validateDiagramCode={validateDiagramCode}
         onMinimize={() => setAiOpen(false)}
       />
       <div className="panel-header">
@@ -150,11 +140,11 @@ export function CodeEditor({
         )}
         {panelMode === 'code' && (
           <div className="toolbar">
-            {onApplyTemplate && <TemplateSelect onSelect={handleTemplateSelect} />}
-            <button type="button" className="toolbar-btn" onClick={onFormat}>
+            <TemplateSelect onSelect={handleTemplateSelect} />
+            <button type="button" className="toolbar-btn" onClick={() => setCode(code.trim())}>
               <AlignLeft size={14} className="icon-muted" /> Format
             </button>
-            <button type="button" className="toolbar-btn" onClick={onCopy}>
+            <button type="button" className="toolbar-btn" onClick={() => void navigator.clipboard.writeText(code)}>
               <Copy size={14} className="icon-muted" /> Copy
             </button>
             <button type="button" className="toolbar-btn" onClick={() => void handleValidate()}>

@@ -12,7 +12,6 @@ import { getFolderName } from '../lib/folders/pathUtils'
 export function MyDiagramsPage() {
   const [query, setQuery] = useState('')
   const {
-    loading,
     dbError,
     currentPath,
     childFolders,
@@ -41,16 +40,6 @@ export function MyDiagramsPage() {
         getFolderName(d.folderPath).toLowerCase().includes(q),
     )
   }, [recentDiagrams, q])
-
-  if (loading) {
-    return (
-      <AppLayout>
-        <main className="dashboard-main">
-          <div className="page-container editor-loading">Loading diagrams…</div>
-        </main>
-      </AppLayout>
-    )
-  }
 
   return (
     <AppLayout>

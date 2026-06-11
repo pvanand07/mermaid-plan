@@ -1,43 +1,21 @@
+import type { Context } from 'hono'
 import { Hono } from 'hono'
 import { streamSSE } from 'hono/streaming'
-import { z } from 'zod'
+import { chatRequestSchema, continueRequestSchema } from '../../shared/agent/schemas.ts'
 import { config } from '../config.js'
+import { createEphemeralAccessor } from '../agent/ephemeralState.js'
 import { createAgentContinueRun, createAgentRun } from '../agent/runAgent.js'
-import { createAgentSession, getAgentSessionAccessor } from '../agent/sessionStore.js'
 import { streamAgentResult } from '../agent/streamRun.js'
 import { isClientHandledTool } from '../agent/tools/clientTools.js'
-import type { AgentChatResponse, AgentToolCallPayload } from '../types.js'
+import type {
+  AgentChatRequest,
+  AgentChatResponse,
+  AgentContinueRequest,
+  AgentToolCallPayload,
+} from '../types.js'
 
-const messageSchema = z.object({
-  role: z.enum(['user', 'assistant']),
-  content: z.string().min(1),
-})
-
-const toolResultSchema = z.object({
-  ok: z.boolean(),
-  error: z.string().optional(),
-  phase: z.enum(['parse', 'render']).optional(),
-  diagramType: z.string().optional(),
-})
-
-const chatRequestSchema = z.object({
-  messages: z.array(messageSchema).min(1),
-  diagramCode: z.string().optional(),
-  noteMd: z.string().optional(),
-  diagramTitle: z.string().optional(),
-  model: z.string().min(1).optional(),
-})
-
-const continueRequestSchema = z.object({
-  sessionId: z.string().min(1),
-  toolCallId: z.string().min(1),
-  toolCallName: z.enum(['update_mermaid', 'update_note']),
-  toolResult: toolResultSchema,
-  diagramCode: z.string().optional(),
-  noteMd: z.string().optional(),
-  diagramTitle: z.string().optional(),
-  model: z.string().min(1).optional(),
-})
+type ChatRequest = AgentChatRequest
+type ContinueRequest = AgentContinueRequest
 
 function missingKeyResponse(c: { json: (body: unknown, status?: number) => Response }) {
   return c.json(
@@ -66,6 +44,34 @@ function mapAgentError(error: unknown) {
   return { statusCode, message }
 }
 
+function streamAgent(c: Context, mode: 'chat' | 'continue', data: ChatRequest | ContinueRequest) {
+  const accessor =
+    mode === 'continue'
+      ? createEphemeralAccessor((data as ContinueRequest).conversationState as never)
+      : createEphemeralAccessor()
+
+  const { result, model } =
+    mode === 'continue'
+      ? createAgentContinueRun(data as AgentContinueRequest, { state: accessor })
+      : createAgentRun(data as ChatRequest, { state: accessor })
+
+  return streamSSE(c, async (stream) => {
+    try {
+      await stream.writeSSE({
+        event: 'meta',
+        data: JSON.stringify({ model }),
+      })
+      await streamAgentResult(result, stream, accessor)
+    } catch (error) {
+      const mapped = mapAgentError(error)
+      await stream.writeSSE({
+        event: 'error',
+        data: JSON.stringify({ error: mapped.message }),
+      })
+    }
+  })
+}
+
 export const agentRoutes = new Hono()
 
 agentRoutes.post('/chat', async (c) => {
@@ -76,13 +82,14 @@ agentRoutes.post('/chat', async (c) => {
     return c.json({ error: 'Invalid request', details: parsed.error.flatten() }, 400)
   }
 
-  const { sessionId, accessor } = createAgentSession()
+  const accessor = createEphemeralAccessor()
 
   try {
     const { result, model } = createAgentRun(parsed.data, { state: accessor })
     const [text, response] = await Promise.all([result.getText(), result.getResponse()])
     const toolCalls = await result.getToolCalls()
     const clientCall = toolCalls.find((call) => isClientHandledTool(call.name))
+    const conversationState = clientCall ? await accessor.load() : undefined
 
     const body: AgentChatResponse = {
       message: {
@@ -90,7 +97,6 @@ agentRoutes.post('/chat', async (c) => {
         content: text,
       },
       model,
-      sessionId,
       paused: !!clientCall,
       toolCall: clientCall
         ? ({
@@ -99,6 +105,7 @@ agentRoutes.post('/chat', async (c) => {
             arguments: clientCall.arguments,
           } as AgentToolCallPayload)
         : undefined,
+      conversationState,
       usage: response.usage
         ? {
             inputTokens: response.usage.inputTokens,
@@ -123,24 +130,7 @@ agentRoutes.post('/chat/stream', async (c) => {
     return c.json({ error: 'Invalid request', details: parsed.error.flatten() }, 400)
   }
 
-  const { sessionId, accessor } = createAgentSession()
-  const { result, model } = createAgentRun(parsed.data, { state: accessor })
-
-  return streamSSE(c, async (stream) => {
-    try {
-      await stream.writeSSE({
-        event: 'meta',
-        data: JSON.stringify({ model, sessionId }),
-      })
-      await streamAgentResult(result, stream, sessionId)
-    } catch (error) {
-      const mapped = mapAgentError(error)
-      await stream.writeSSE({
-        event: 'error',
-        data: JSON.stringify({ error: mapped.message }),
-      })
-    }
-  })
+  return streamAgent(c, 'chat', parsed.data)
 })
 
 agentRoutes.post('/chat/continue', async (c) => {
@@ -151,26 +141,5 @@ agentRoutes.post('/chat/continue', async (c) => {
     return c.json({ error: 'Invalid request', details: parsed.error.flatten() }, 400)
   }
 
-  const accessor = getAgentSessionAccessor(parsed.data.sessionId)
-  if (!accessor) {
-    return c.json({ error: 'Session not found or expired' }, 404)
-  }
-
-  const { result, model } = createAgentContinueRun(parsed.data, { state: accessor })
-
-  return streamSSE(c, async (stream) => {
-    try {
-      await stream.writeSSE({
-        event: 'meta',
-        data: JSON.stringify({ model, sessionId: parsed.data.sessionId }),
-      })
-      await streamAgentResult(result, stream, parsed.data.sessionId)
-    } catch (error) {
-      const mapped = mapAgentError(error)
-      await stream.writeSSE({
-        event: 'error',
-        data: JSON.stringify({ error: mapped.message }),
-      })
-    }
-  })
+  return streamAgent(c, 'continue', parsed.data)
 })

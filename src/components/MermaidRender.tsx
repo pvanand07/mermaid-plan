@@ -1,6 +1,8 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import mermaid from 'mermaid'
+import { detectDiagramType } from '../lib/diagram/detectDiagramType'
 import { cleanupMermaidRenderElement } from '../lib/mermaid/cleanup'
+import type { MermaidValidationResult } from '../lib/mermaid/validateDiagram'
 import { cn } from '../lib/cn'
 
 mermaid.initialize({
@@ -28,12 +30,14 @@ export function MermaidRender({
   scale = 1,
   onRendered,
   onError,
+  onResult,
 }: {
   code: string
   className?: string
   scale?: number
   onRendered?: () => void
   onError?: (message: string | null) => void
+  onResult?: (result: MermaidValidationResult) => void
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
@@ -41,6 +45,7 @@ export function MermaidRender({
   const renderSeq = useRef(0)
   const onRenderedRef = useRef(onRendered)
   const onErrorRef = useRef(onError)
+  const onResultRef = useRef(onResult)
 
   useEffect(() => {
     onRenderedRef.current = onRendered
@@ -49,6 +54,10 @@ export function MermaidRender({
   useEffect(() => {
     onErrorRef.current = onError
   }, [onError])
+
+  useEffect(() => {
+    onResultRef.current = onResult
+  }, [onResult])
 
   useEffect(() => {
     let cancelled = false
@@ -81,6 +90,7 @@ export function MermaidRender({
             svgElement.style.maxWidth = 'none'
           }
 
+          onResultRef.current?.({ ok: true, diagramType: detectDiagramType(code) })
           onRenderedRef.current?.()
         }
       } catch (e) {
@@ -90,6 +100,7 @@ export function MermaidRender({
           const message = e instanceof Error ? e.message : 'Render failed'
           setError(message)
           onErrorRef.current?.(message)
+          onResultRef.current?.({ ok: false, phase: 'render', error: message })
         }
       }
     }

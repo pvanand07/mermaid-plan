@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { db } from '../lib/db/mermaidStudioDb'
+import { ensureDbReady } from '../lib/db/ensureDbReady'
 
 export function useDbReady() {
   const [ready, setReady] = useState(false)
@@ -7,13 +7,19 @@ export function useDbReady() {
 
   useEffect(() => {
     let cancelled = false
-    db.open()
+    ensureDbReady()
       .then(() => {
         if (!cancelled) setReady(true)
       })
       .catch((err: unknown) => {
         if (!cancelled) {
-          setDbError(err instanceof Error ? err.message : 'Database unavailable')
+          const message =
+            err instanceof Response
+              ? err.statusText || 'Database unavailable'
+              : err instanceof Error
+                ? err.message
+                : 'Database unavailable'
+          setDbError(message)
           setReady(true)
         }
       })

@@ -1,138 +1,92 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { storageConfig } from '../config/storage'
-import type { Template } from '../data/types'
-import { useDbReady } from './useDbReady'
-import { getDiagram, updateDiagram } from '../lib/db/diagramRepository'
+import type { DiagramRecord, Template } from '../data/types'
+import { updateDiagram } from '../lib/db/diagramRepository'
 import { createVersionSnapshot, listVersions, restoreVersion } from '../lib/db/versionRepository'
 import { noteExcerpt } from '../lib/formatEditedAgo'
+import { useAutosave } from './useAutosave'
 
-export type SaveStatus = 'saved' | 'saving' | 'dirty' | 'error'
+export type { SaveStatus } from './useAutosave'
+
+interface EditorSnapshot {
+  title: string
+  code: string
+  noteMd: string
+  folderPath: string
+}
 
 interface UseDiagramEditorOptions {
   id: string
+  initial: DiagramRecord
 }
 
-export function useDiagramEditor({ id }: UseDiagramEditorOptions) {
-  const { dbError } = useDbReady()
+function snapshotsEqual(a: EditorSnapshot, b: EditorSnapshot) {
+  return (
+    a.title === b.title &&
+    a.code === b.code &&
+    a.noteMd === b.noteMd &&
+    a.folderPath === b.folderPath
+  )
+}
 
-  const [title, setTitle] = useState('Untitled')
-  const [code, setCode] = useState('')
-  const [noteMd, setNoteMd] = useState('')
-  const [folderPath, setFolderPath] = useState('')
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
-  const [loaded, setLoaded] = useState(false)
-  const [notFound, setNotFound] = useState(false)
+export function useDiagramEditor({ id, initial }: UseDiagramEditorOptions) {
+  const [title, setTitle] = useState(initial.title)
+  const [code, setCode] = useState(initial.mermaidCode)
+  const [noteMd, setNoteMd] = useState(initial.noteMd ?? '')
+  const [folderPath, setFolderPath] = useState(initial.folderPath)
 
-  const lastSavedRef = useRef({
-    title: 'Untitled',
-    code: '',
-    noteMd: '',
-    folderPath: '',
-  })
   const lastSnapshotAtRef = useRef<number | null>(null)
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const isSavingRef = useRef(false)
-
+  const lastContentRef = useRef({
+    title: initial.title,
+    code: initial.mermaidCode,
+    noteMd: initial.noteMd ?? '',
+  })
   const versions = useLiveQuery(() => listVersions(id), [id], [])
 
-  useEffect(() => {
-    let cancelled = false
-    setLoaded(false)
-    setNotFound(false)
+  const snapshot = useMemo(
+    (): EditorSnapshot => ({ title, code, noteMd, folderPath }),
+    [title, code, noteMd, folderPath],
+  )
 
-    getDiagram(id).then((record) => {
-      if (cancelled) return
-      if (!record) {
-        setNotFound(true)
-        setLoaded(true)
-        return
-      }
+  const persistSnapshot = useCallback(async () => {
+    const contentChanged =
+      snapshot.title !== lastContentRef.current.title ||
+      snapshot.code !== lastContentRef.current.code ||
+      snapshot.noteMd !== lastContentRef.current.noteMd
 
-      setTitle(record.title)
-      setCode(record.mermaidCode)
-      setNoteMd(record.noteMd ?? '')
-      setFolderPath(record.folderPath)
-      lastSavedRef.current = {
-        title: record.title,
-        code: record.mermaidCode,
-        noteMd: record.noteMd ?? '',
-        folderPath: record.folderPath,
-      }
-      setLoaded(true)
-      setSaveStatus('saved')
+    const record = await updateDiagram(id, {
+      title: snapshot.title,
+      mermaidCode: snapshot.code,
+      noteMd: snapshot.noteMd || null,
+      folderPath: snapshot.folderPath,
     })
 
-    return () => {
-      cancelled = true
-    }
-  }, [id])
+    const now = Date.now()
+    const shouldSnapshot =
+      storageConfig.versioning.enabled &&
+      contentChanged &&
+      (lastSnapshotAtRef.current === null ||
+        now - lastSnapshotAtRef.current >= storageConfig.versioning.throttleMs)
 
-  const persist = useCallback(async () => {
-    if (isSavingRef.current || notFound) return
-
-    const contentChanged =
-      title !== lastSavedRef.current.title ||
-      code !== lastSavedRef.current.code ||
-      (noteMd ?? '') !== (lastSavedRef.current.noteMd ?? '')
-    const folderChanged = folderPath !== lastSavedRef.current.folderPath
-
-    if (!contentChanged && !folderChanged) {
-      setSaveStatus('saved')
-      return
+    if (shouldSnapshot) {
+      lastSnapshotAtRef.current = now
+      await createVersionSnapshot(record)
     }
 
-    isSavingRef.current = true
-    setSaveStatus('saving')
-
-    try {
-      const record = await updateDiagram(id, {
-        title,
-        mermaidCode: code,
-        noteMd: noteMd || null,
-        folderPath,
-      })
-
-      const now = Date.now()
-      const shouldSnapshot =
-        storageConfig.versioning.enabled &&
-        contentChanged &&
-        (lastSnapshotAtRef.current === null ||
-          now - lastSnapshotAtRef.current >= storageConfig.versioning.throttleMs)
-
-      if (shouldSnapshot) {
-        lastSnapshotAtRef.current = now
-        await createVersionSnapshot(record)
-      }
-
-      lastSavedRef.current = { title, code, noteMd, folderPath }
-      setSaveStatus('saved')
-    } catch {
-      setSaveStatus('error')
-    } finally {
-      isSavingRef.current = false
+    lastContentRef.current = {
+      title: snapshot.title,
+      code: snapshot.code,
+      noteMd: snapshot.noteMd,
     }
-  }, [code, folderPath, id, notFound, noteMd, title])
+  }, [id, snapshot])
 
-  useEffect(() => {
-    if (!loaded || notFound) return
-
-    const dirty =
-      title !== lastSavedRef.current.title ||
-      code !== lastSavedRef.current.code ||
-      noteMd !== lastSavedRef.current.noteMd ||
-      folderPath !== lastSavedRef.current.folderPath
-    if (dirty && saveStatus !== 'saving') setSaveStatus('dirty')
-
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-    saveTimerRef.current = setTimeout(() => {
-      void persist()
-    }, storageConfig.autosaveDebounceMs)
-
-    return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-    }
-  }, [title, code, noteMd, folderPath, loaded, notFound, persist, saveStatus])
+  const { saveStatus, setSaveStatus, markSaved, isSavingRef } = useAutosave(
+    snapshot,
+    snapshotsEqual,
+    persistSnapshot,
+    storageConfig.autosaveDebounceMs,
+  )
 
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -151,15 +105,14 @@ export function useDiagramEditor({ id }: UseDiagramEditorOptions) {
       setCode(restored.mermaidCode)
       setNoteMd(restored.noteMd ?? '')
       setFolderPath(restored.folderPath)
-      lastSavedRef.current = {
+      markSaved({
         title: restored.title,
         code: restored.mermaidCode,
         noteMd: restored.noteMd ?? '',
         folderPath: restored.folderPath,
-      }
-      setSaveStatus('saved')
+      })
     },
-    [id],
+    [id, markSaved],
   )
 
   const applyAgentDiagramUpdate = useCallback(
@@ -181,18 +134,14 @@ export function useDiagramEditor({ id }: UseDiagramEditorOptions) {
           await createVersionSnapshot(record, commitMessage)
         }
 
-        lastSavedRef.current = {
-          ...lastSavedRef.current,
-          code: nextCode,
-        }
-        setSaveStatus('saved')
+        markSaved({ ...snapshot, code: nextCode })
       } catch {
         setSaveStatus('error')
       } finally {
         isSavingRef.current = false
       }
     },
-    [id],
+    [id, markSaved, setSaveStatus, snapshot, isSavingRef],
   )
 
   const applyAgentNoteUpdate = useCallback(
@@ -214,18 +163,14 @@ export function useDiagramEditor({ id }: UseDiagramEditorOptions) {
           await createVersionSnapshot(record, commitMessage)
         }
 
-        lastSavedRef.current = {
-          ...lastSavedRef.current,
-          noteMd: nextNoteMd,
-        }
-        setSaveStatus('saved')
+        markSaved({ ...snapshot, noteMd: nextNoteMd })
       } catch {
         setSaveStatus('error')
       } finally {
         isSavingRef.current = false
       }
     },
-    [id],
+    [id, markSaved, setSaveStatus, snapshot, isSavingRef],
   )
 
   const applyTemplate = useCallback(
@@ -253,9 +198,6 @@ export function useDiagramEditor({ id }: UseDiagramEditorOptions) {
     saveStatus,
     versions: versions ?? [],
     subtitle,
-    dbError,
-    loaded,
-    notFound,
     restoreVersion: handleRestoreVersion,
     applyAgentDiagramUpdate,
     applyAgentNoteUpdate,

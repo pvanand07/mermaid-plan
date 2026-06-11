@@ -28,17 +28,17 @@ function colorForPath(path: string) {
 
 export function useFolderBrowser() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const { ready, dbError } = useDbReady()
+  const { dbError } = useDbReady()
 
   const diagrams = useLiveQuery(
-    () => (ready && !dbError ? listDiagrams() : []),
-    [ready, dbError],
+    () => (!dbError ? listDiagrams() : []),
+    [dbError],
     [],
   )
 
   const folderPaths = useLiveQuery(
-    () => (ready && !dbError ? listAllFolderPaths() : []),
-    [ready, dbError],
+    () => (!dbError ? listAllFolderPaths() : []),
+    [dbError],
     [],
   )
 
@@ -94,7 +94,6 @@ export function useFolderBrowser() {
     navigateToFolder,
     handleCreateFolder,
     allDiagrams: diagramList,
-    loading: !ready,
     dbError,
   }
 }
